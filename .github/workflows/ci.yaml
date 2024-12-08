@@ -1,0 +1,12 @@
+on:
+  pull_request:
+  push:
+
+name: Syntax
+jobs:
+  nocommit:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: "nocommit checker"
+        uses: nobssoftware/nocommit@v2
