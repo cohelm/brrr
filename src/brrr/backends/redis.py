@@ -111,7 +111,7 @@ class RedisQueue(Queue):
 
     def get_message(self) -> Message:
         # This is not an async client
-        ret = typing.cast(list[Any], self.client.blpop([self.key], 20))
+        ret = typing.cast(list[Any], self.client.blpop([self.key], self.recv_block_secs))
         if not ret:
             raise QueueIsEmpty
 

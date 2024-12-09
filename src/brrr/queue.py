@@ -13,6 +13,15 @@ class Message:
 # Infra abstractions
 
 class Queue:
+    # Inspired by SQS: maximum time for a get_message call to block while
+    # waiting for new messages, if there are currently no messages on the queue.
+    # Just as with SQS, if there is a message, return immediately.  This value
+    # is best effort, just a way to keep this DRY if nothing else.  If the
+    # underlying queue doesn’t support this primitive it’s OK, but don’t sleep
+    # for this time indiscriminately because the point of this value is to block
+    # only while there are no messages available.
+    recv_block_secs: int = 20
+
     async def get_message_async(self) -> Message:
         return self.get_message()
     def get_message(self) -> Message:

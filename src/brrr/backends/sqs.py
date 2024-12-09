@@ -17,7 +17,7 @@ class SqsQueue(Queue):
         response = self.client.receive_message(
             QueueUrl=self.url,
             MaxNumberOfMessages=1,
-            WaitTimeSeconds=3,
+            WaitTimeSeconds=self.recv_block_secs,
         )
 
         if "Messages" not in response:
@@ -37,4 +37,3 @@ class SqsQueue(Queue):
             ReceiptHandle=receipt_handle,
             VisibilityTimeout=seconds
         )
-
