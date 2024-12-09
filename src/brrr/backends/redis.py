@@ -1,5 +1,7 @@
 import time
 import redis
+import typing
+from typing import Any
 
 from ..queue import Message, Queue, RichQueue, QueueIsEmpty
 from ..store import MemKey, Store
@@ -108,10 +110,14 @@ class RedisQueue(Queue):
         self.client.rpush(self.key, message)
 
     def get_message(self) -> Message:
-        message = self.client.lpop(self.key)
-        if not message:
+        # This is not an async client
+        ret = typing.cast(list[Any], self.client.blpop([self.key], 20))
+        if not ret:
             raise QueueIsEmpty
-        return Message(message, '')
+
+        if not len(ret) >= 2:
+            raise Exception(f"Unexpected length of return value from BLPOP: {len(ret)}")
+        return Message(ret[1], '')
 
     def delete_message(self, receipt_handle: str):
         pass
@@ -161,6 +167,8 @@ class RedisStream(RichQueue):
         argv = self.group, self.consumer, self.rate_limit_pool_capacity, self.replenish_rate_per_second, self.max_concurrency, self.job_timeout_ms
         response = self.client.eval(DEQUEUE_FUNCTION, len(keys), *keys, *argv)
         if not response:
+            # TODO: Do not wait indiscriminately but simulate blpop.  How do you
+            # do that with a script?
             time.sleep(1)
             raise QueueIsEmpty
         body, receipt_handle = response[:2]
