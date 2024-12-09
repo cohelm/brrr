@@ -13,7 +13,7 @@ def init_brrr(reset_backends):
     # Check credentials
     boto3.client('sts').get_caller_identity()
 
-    redis_client = redis.Redis()
+    redis_client = redis.Redis(decode_responses=True)
     queue = redis_.RedisQueue(redis_client, os.environ.get("REDIS_QUEUE_KEY", "r1"))
 
     dynamo_client = boto3.client("dynamodb")

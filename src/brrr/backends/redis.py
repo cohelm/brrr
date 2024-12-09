@@ -89,10 +89,18 @@ redis.call('XDEL', stream, msg_id)
 """
 
 class RedisQueue(Queue):
+    """
+    Single-topic queue on Redis using LPOP and RPUSH
+    """
     client: redis.Redis
     key: str
 
     def __init__(self, client: redis.Redis, key: str):
+        """
+        Bring your own sync Redis client.
+
+        The redis client must be initialized with `decode=True`.
+        """
         self.client = client
         self.key = key
 
@@ -100,10 +108,9 @@ class RedisQueue(Queue):
         self.client.rpush(self.key, message)
 
     def get_message(self) -> Message:
-        message_bytes = self.client.lpop(self.key)
-        if not message_bytes:
+        message = self.client.lpop(self.key)
+        if not message:
             raise QueueIsEmpty
-        message = message_bytes.decode('utf-8')
         return Message(message, '')
 
     def delete_message(self, receipt_handle: str):
@@ -156,8 +163,7 @@ class RedisStream(RichQueue):
         if not response:
             time.sleep(1)
             raise QueueIsEmpty
-        body = response[0].decode('utf-8')
-        receipt_handle = response[1].decode('utf-8')
+        body, receipt_handle = response[:2]
         print(self.client.xpending(self.queue, self.group))
         return Message(body, receipt_handle)
 
