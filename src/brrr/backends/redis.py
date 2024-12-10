@@ -1,10 +1,14 @@
+from __future__ import annotations
+
 import time
-import redis
 import typing
 from typing import Any
 
 from ..queue import Message, Queue, RichQueue, QueueIsEmpty
 from ..store import MemKey, Store
+
+if typing.TYPE_CHECKING:
+    import redis
 
 # This script takes care of all of the queue semantics beyond at least once delivery
 # - Rate limiting

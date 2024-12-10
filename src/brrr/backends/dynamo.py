@@ -1,8 +1,12 @@
-import os
+from __future__ import annotations
 
-from mypy_boto3_dynamodb import DynamoDBClient
+import os
+import typing
 
 from ..store import MemKey, Store
+
+if typing.TYPE_CHECKING:
+    from mypy_boto3_dynamodb import DynamoDBClient
 
 # The frame table layout is:
 #
