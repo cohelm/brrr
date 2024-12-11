@@ -59,6 +59,7 @@
             AWS_ENDPOINT_URL = "http://localhost:4566";
             AWS_ACCESS_KEY_ID = "000000000000";
             AWS_SECRET_ACCESS_KEY = "localstack-foo";
+            AWS_DEFAULT_REGION = "us-east-1";
           };
         in {
           redis.r1.enable = true;
