@@ -45,6 +45,7 @@ def hello(greetee: str):
 cmds = {}
 def cmd(f):
     cmds[f.__name__] = f
+    return f
 
 @cmd
 def worker():
