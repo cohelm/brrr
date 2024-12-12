@@ -2,11 +2,13 @@
 
 import os
 import sys
+from typing import Iterable
 
-import redis
 import boto3
+import redis
 
 from brrr.backends import redis as redis_, dynamo
+import brrr
 from brrr import task, wrrrk, srrrv, setup
 
 def init_brrr(reset_backends):
@@ -57,10 +59,29 @@ def server():
     init_brrr(True)
     srrrv([hello, fib, fib_and_print])
 
+def args2dict(args: Iterable[str]) -> dict[str, str]:
+    """
+    Extremely rudimentary arbitrary argparser.
+
+    args2dict(["--foo", "bar", "--zim", "zom"])
+    => {"foo": "bar", "zim": "zom"}
+
+    """
+    it = iter(args)
+    return {k.lstrip('-'): v for k, v in zip(it, it)}
+
+@cmd
+def schedule(job: str, *args: str):
+    """
+    Put a single job onto the queue
+    """
+    init_brrr(False)
+    brrr.schedule(job, (), args2dict(args))
+
 def main():
     f = cmds.get(sys.argv[1]) if len(sys.argv) > 1 else None
     if f:
-        f()
+        f(*sys.argv[2:])
     else:
         print(f"Usage: brrr_demo.py <{" | ".join(cmds.keys())}>")
         sys.exit(1)

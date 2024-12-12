@@ -116,7 +116,25 @@ class Brrr:
 
         return values
 
-    def schedule(self, call: Call, parent_key=None) -> Frame:
+    def schedule(self, task_name: str, args: tuple, kwargs: dict) -> Frame:
+        """Public-facing one-shot schedule method.
+
+        The exact API for the type of args and kwargs is still WIP.  We're doing
+        (args, kwargs) for now but it's WIP.
+
+        Don't use this internally.
+
+        """
+        return self._schedule_call(Call(task_name, (args, kwargs)))
+
+    def _schedule_call(self, call: Call, parent_key=None) -> Frame:
+        """Schedule this call on the brrr workforce.
+
+        This is the real internal entrypoint which should be used by all brrr
+        internal-facing code, to avoid confusion about what's internal API and
+        what's external.
+
+        """
         self.require_setup()
 
         # Value has been computed already, return straight to the parent (if there is one)
@@ -244,7 +262,8 @@ class Task:
         """
         This puts the task call on the queue, but doesn't return the result!
         """
-        return self.brrr.schedule(Call(self.name, (args, kwargs)))
+        call = Call(self.name, (args, kwargs))
+        return self.brrr._schedule_call(call)
 
 class Wrrrker:
     def __init__(self, brrr: Brrr):
@@ -276,7 +295,7 @@ class Wrrrker:
                 self.brrr.queue.put(frame.parent_key)
         except Defer as defer:
             for call in defer.calls:
-                self.brrr.schedule(call, frame_key)
+                self.brrr._schedule_call(call, frame_key)
 
     # TODO exit when queue empty?
     def loop(self):
@@ -327,7 +346,6 @@ class ThreadWrrrker(Wrrrker):
     def __exit__(self, exc_type, exc_value, traceback):
         del self.brrr.worker_threads[threading.current_thread()]
 
-
 # A "Front Office" worker, that is publically exposed and takes requests
 # to schedule tasks and return their results via webhooks
 class Srrrver(http.server.SimpleHTTPRequestHandler):
@@ -370,7 +388,7 @@ class Srrrver(http.server.SimpleHTTPRequestHandler):
             self.end_headers()
             self.wfile.write(json.dumps({"status": "ok", "result": result}).encode())
         except KeyError:
-            self.brrr.schedule(call)
+            self.brrr._schedule_call(call)
             self.send_response(202)
             self.send_header('Content-type', 'application/json')
             self.end_headers()
