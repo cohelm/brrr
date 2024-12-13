@@ -119,6 +119,9 @@
           # virtualenv includes all the dependencies and a python which knows
           # how to find them.
           default = pythonSet.mkVirtualEnv "brrr-env" uvWorkspace.deps.default;
+          # A virtual env with all optional dependencies installed for demo &
+          # tests.
+          dev = pythonSet.mkVirtualEnv "brrr-dev-env" uvWorkspace.deps.all;
           # Bare package without any env setup for other packages to include as
           # a lib (again: I think?)
           brrr = pythonSet.brrr;
@@ -132,7 +135,7 @@
             '';
             buildInputs = [
               # Dependencies for the demo are marked as ‘dev’
-              (pythonSet.mkVirtualEnv "brrr-dev-env" uvWorkspace.deps.all)
+              self'.packages.dev
             ];
             # The patch phase will automatically use the python from the venv as
             # the interpreter for the demo script.
@@ -145,6 +148,17 @@
             tag = "latest";
             config.Entrypoint = [ "${lib.getExe pkg}" ];
           };
+        };
+        checks.pytest = pkgs.stdenvNoCC.mkDerivation {
+          name = "pytest";
+          nativeBuildInputs = [ self'.packages.dev ];
+          src = lib.cleanSource ./.;
+          buildPhase = ''
+            pytest
+          '';
+          installPhase = ''
+            touch $out
+          '';
         };
         devshells = {
           impure = {
