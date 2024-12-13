@@ -1,15 +1,13 @@
 from typing import Any, Callable, Union
 
+import logging
 import asyncio
 import threading
-import os
-import http.server
-import socketserver
-import json
-from urllib.parse import parse_qsl
 
 from .store import AlreadyExists, Call, CompareMismatch, Memory, Store, input_hash
 from .queue import Queue, QueueIsClosed, QueueIsEmpty
+
+logger = logging.getLogger(__name__)
 
 class Defer(Exception):
     """
@@ -281,7 +279,7 @@ class Wrrrker:
 
         call = self.brrr.memory.get_call(memo_key)
 
-        print("Resolving", memo_key, call.task_name, call.argv)
+        logger.info("Resolving %s %s %s", memo_key, call.task_name, call.argv)
 
         try:
             value = self.brrr.evaluate(call)
@@ -333,16 +331,16 @@ class Wrrrker:
         Managing the output of tasks and scheduling new ones
         """
         with self:
-            print("Worker Started")
+            logger.info("Worker Started")
             while True:
                 try:
                     # This is presumed to be a long poll
                     message = self.brrr.queue.get_message()
                 except QueueIsEmpty:
-                    print("Queue is empty")
+                    logger.info("Queue is empty")
                     continue
                 except QueueIsClosed:
-                    print("Queue is closed")
+                    logger.info("Queue is closed")
                     return
 
                 memo_key = message.body
@@ -352,14 +350,15 @@ class Wrrrker:
 
     async def loop_async(self):
         with self:
+            logger.info("Worker Started")
             while True:
                 try:
                     message = await self.brrr.queue.get_message_async()
                 except QueueIsEmpty:
-                    print("Queue is empty")
+                    logger.info("Queue is empty")
                     continue
                 except QueueIsClosed:
-                    print("Queue is closed")
+                    logger.info("Queue is closed")
                     return
 
 
