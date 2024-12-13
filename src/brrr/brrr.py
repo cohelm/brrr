@@ -18,13 +18,17 @@ class Defer(Exception):
     def __init__(self, calls: list[Call]):
         self.calls = calls
 
-# Quick n dirty hack to achieve lazy initialization without fully rewriting this
-# entire global using file.  The real solution is to use a singleton and make
-# the top level functions proxies to the singleton.
 class Brrr:
     """
     All state for brrr to function wrapped in a container.
     """
+    def requires_setup(method):
+        def wrapper(self, *args, **kwargs):
+            if self.queue is None or self.memory is None:
+                raise Exception("Brrr not set up")
+            return method(self, *args, **kwargs)
+        return wrapper
+
     # The worker loop (as of writing) is synchronous so it can safely set a
     # local global variable to indicate that it is a worker thread, which, for
     # tasks, means that their Defer raises will be caught and handled by the
@@ -68,11 +72,6 @@ class Brrr:
         self.queue = queue
         self.memory = Memory(store)
 
-    # TODO would we like this to be a decorator?
-    def require_setup(self):
-        if self.queue is None or self.memory is None:
-            raise Exception("Brrr not set up")
-
     def are_we_inside_worker_context(self):
         if self.worker_singleton:
             return True
@@ -89,14 +88,13 @@ class Brrr:
             return False
 
 
+    @requires_setup
     def gather(self, *task_lambdas) -> list[Any]:
         """
         Takes a number of task lambdas and calls each of them.
         If they've all been computed, return their values,
         Otherwise raise jobs for those that haven't been computed
         """
-        self.require_setup()
-
         if not self.are_we_inside_worker_context():
             return [task_lambda() for task_lambda in task_lambdas]
 
@@ -125,6 +123,7 @@ class Brrr:
         """
         return self._schedule_call(Call(task_name, (args, kwargs)))
 
+    @requires_setup
     def _schedule_call(self, call: Call, parent_key=None):
         """Schedule this call on the brrr workforce.
 
@@ -133,8 +132,6 @@ class Brrr:
         what's external.
 
         """
-        self.require_setup()
-
         # Value has been computed already, return straight to the parent (if there is one)
         if self.memory.has_value(call.memo_key):
             if parent_key is not None:
@@ -149,6 +146,7 @@ class Brrr:
         if parent_key is not None:
             self.memory.add_pending_returns(call.memo_key, set([parent_key]))
 
+    @requires_setup
     def read(self, task_name: str, args: tuple, kwargs: dict):
         """
         Returns the value of a task, or raises a KeyError if it's not present in the store
@@ -157,12 +155,11 @@ class Brrr:
         return self.memory.get_value(memo_key)
 
 
+    @requires_setup
     def evaluate(self, call: Call) -> Any:
         """
         Evaluate a frame, which means calling the tasks function with its arguments
         """
-        self.require_setup()
-
         task = self.tasks[call.task_name]
         return task.evaluate(call.argv)
 
