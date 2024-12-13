@@ -5,6 +5,11 @@ from dataclasses import dataclass
 class QueueIsEmpty(Exception):
     pass
 
+class QueueIsClosed(Exception):
+    """
+    Queue implementations may raise this exception for workers to shut down gracefully
+    """
+
 @dataclass
 class Message:
     body: str
@@ -30,6 +35,12 @@ class Queue(ABC):
     # only while there are no messages available.
     recv_block_secs: int = 20
 
+    throws_queue_is_closed: bool
+    has_accurate_info: bool
+    deletes_messages: bool
+
+    @abstractmethod
+    def put(self, body: str): ...
     @abstractmethod
     async def get_message_async(self) -> Message: ...
     @abstractmethod

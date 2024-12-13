@@ -25,6 +25,9 @@ class Call:
     def memo_key(self):
         return input_hash(self.task_name, self.argv)
 
+    def __eq__(self, other):
+        return isinstance(other, Call) and self.memo_key == other.memo_key
+
 
 @dataclass
 class Info:
@@ -128,6 +131,8 @@ class Memory:
         return MemKey("call", call.memo_key) in self.pickles
 
     def set_call(self, call: Call):
+        if not isinstance(call, Call):
+            raise ValueError(f"set_call expected a Call, got {call}")
         self.pickles[MemKey("call", call.memo_key)] = call
 
     def has_value(self, memo_key: str) -> bool:
@@ -137,11 +142,17 @@ class Memory:
         return self.pickles[MemKey("value", memo_key)]
 
     def set_value(self, memo_key: str, value: Any):
+        if value is None:
+            raise ValueError("set_value value cannot be None")
+
         # Only set if the value is not already set
         try:
             self.pickles.compare_and_set(MemKey("value", memo_key), value, None)
         except CompareMismatch:
-            pass
+            # Throwing over passing here; Because of idempotency, we only ever want
+            # one value to be set for a given memo_key. If we silently ignored this here,
+            # we could end up executing code with the wrong value
+            raise ValueError(f"set_value: value already set for {memo_key}")
 
     def get_info(self, task_name: str) -> Info:
         val = self.pickles[MemKey("info", task_name)]
@@ -158,8 +169,10 @@ class Memory:
         return val
 
     def add_pending_returns(self, memo_key: str, updated_keys: set[str]):
+        if any(not isinstance(k, str) for k in updated_keys):
+            raise ValueError("add_pending_returns: all keys must be strings")
+
         # TODO is there a number of retries we should throw for?
-        count = 0
         while True:
             try:
                 existing_keys = self.get_pending_returns(memo_key)
@@ -169,11 +182,13 @@ class Memory:
                 updated_keys |= existing_keys
 
             try:
+                # TODO ehhh, used sets before, but they don't always hash to the same value.
+                # could use lists and keep them sorted and is a safe compare across implementations.
+                # This hack gets us to v1
                 keys_to_set = ",".join(sorted(updated_keys))
-                existing_keys = None if existing_keys is None else ",".join(sorted(existing_keys))
-                self.pickles.compare_and_set(MemKey("pending_returns", memo_key), keys_to_set, existing_keys)
+                keys_to_match = None if existing_keys is None else ",".join(sorted(existing_keys))
+                self.pickles.compare_and_set(MemKey("pending_returns", memo_key), keys_to_set, keys_to_match)
             except CompareMismatch:
-                count += 1
                 continue
             else:
                 return
@@ -186,13 +201,3 @@ class Memory:
     def delete_pending_returns(self, memo_key: str, existing_keys: set[str] | None):
         existing_keys = None if existing_keys is None else ",".join(sorted(existing_keys))
         self.pickles.compare_and_delete(MemKey("pending_returns", memo_key), existing_keys)
-
-    # This has become quite puzzling; call graphs are no longer flat,
-    # but a child can have many parents, and they are only stored while pending.
-    def get_stack_trace(self, frame_key: str) -> list[Call]:
-        frames = []
-        while frame_key:
-            frame = self.get_frame(frame_key)
-            frames.append(frame)
-            frame_key = frame.parent_key
-        return frames

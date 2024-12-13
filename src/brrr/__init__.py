@@ -6,6 +6,5 @@ brrr = Brrr()
 setup = brrr.setup
 gather = brrr.gather
 wrrrk = brrr.wrrrk
-srrrv = brrr.srrrv
 task = brrr.register_task
 schedule = brrr.schedule

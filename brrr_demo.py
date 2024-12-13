@@ -10,7 +10,8 @@ import redis
 
 from brrr.backends import redis as redis_, dynamo
 import brrr
-from brrr import task, wrrrk, srrrv, setup
+from brrr import task, wrrrk, setup, brrr
+from contrib.srrrver import Srrrver
 
 def init_brrr(reset_backends):
     # Check credentials
@@ -60,7 +61,7 @@ def worker():
 @cmd
 def server():
     init_brrr(True)
-    srrrv([hello, fib, fib_and_print])
+    Srrrver.srrrv(brrr)
 
 def args2dict(args: Iterable[str]) -> dict[str, str]:
     """
