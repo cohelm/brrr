@@ -199,11 +199,6 @@ class RedisStream(RichQueue):
             if "BUSYGROUP Consumer Group name already exists" not in str(e):
                 raise
 
-        # Don't register functions but run eval instead
-        # assert DEQUEUE_FUNCTION.startswith(f"#!lua name={self.lib_name}")
-        # assert f"redis.register_function('{self.func_name}'" in DEQUEUE_FUNCTION
-        # self.client.function_load(DEQUEUE_FUNCTION, replace=True)
-
     def put(self, body: str):
         # Messages can not be added to specific groups, so we just create a stream per topic
         self.client.xadd(self.queue, {'body': body})
