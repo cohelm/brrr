@@ -151,6 +151,13 @@ class Brrr:
         if parent_key is not None:
             self.memory.add_pending_returns(call.memo_key, set([parent_key]))
 
+    def read(self, task_name: str, args: tuple, kwargs: dict):
+        """
+        Returns the value of a task, or raises a KeyError if it's not present in the store
+        """
+        memo_key = Call(task_name, (args, kwargs)).memo_key
+        return self.memory.get_value(memo_key)
+
 
     def evaluate(self, call: Call) -> Any:
         """

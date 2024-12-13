@@ -18,6 +18,7 @@ dev = [
     "redis>=5.2.0",
     "ruff>=0.8.1",
     "pytest>=8.3.4",
+    "bottle>=0.13.2",
 ]
 
 [build-system]

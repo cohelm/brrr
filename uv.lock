@@ -66,6 +66,15 @@ wheels = [
 ]
 
 [[package]]
+name = "bottle"
+version = "0.13.2"
+source = { registry = "https://pypi.org/simple" }
+sdist = { url = "https://files.pythonhosted.org/packages/1b/fb/97839b95c2a2ea1ca91877a846988f90f4ca16ee42c0bb79e079171c0c06/bottle-0.13.2.tar.gz", hash = "sha256:e53803b9d298c7d343d00ba7d27b0059415f04b9f6f40b8d58b5bf914ba9d348", size = 98472 }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/7e/0a/a5260c758ff813acc6967344339aa7ba15f815575f4d49141685c4345d39/bottle-0.13.2-py2.py3-none-any.whl", hash = "sha256:27569ab8d1332fbba3e400b3baab2227ab4efb4882ff147af05a7c00ed73409c", size = 104053 },
+]
+
+[[package]]
 name = "brrr"
 version = "0.1.0"
 source = { editable = "." }
@@ -74,6 +83,7 @@ source = { editable = "." }
 dev = [
     { name = "boto3" },
     { name = "boto3-stubs", extra = ["essential"] },
+    { name = "bottle" },
     { name = "pyright" },
     { name = "pytest" },
     { name = "redis" },
@@ -86,6 +96,7 @@ dev = [
 dev = [
     { name = "boto3", specifier = ">=1.35.71" },
     { name = "boto3-stubs", extras = ["essential"], specifier = ">=1.35.71" },
+    { name = "bottle", specifier = ">=0.13.2" },
     { name = "pyright", specifier = ">=1.1.389" },
     { name = "pytest", specifier = ">=8.3.4" },
     { name = "redis", specifier = ">=5.2.0" },

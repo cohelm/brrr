@@ -7,11 +7,30 @@ import time
 
 import boto3
 import redis
+import bottle
 
 from brrr.backends import redis as redis_, dynamo
 import brrr
 from brrr import task, wrrrk, setup, brrr
-from contrib.srrrver import Srrrver
+
+@bottle.route("/<task_name>")
+def get_or_schedule_task(task_name: str):
+    """
+    GET /task_name?argv={"..."}
+    """
+    kwargs = dict(bottle.request.query.items())
+
+    if task_name not in brrr.tasks:
+        bottle.response.status = 404
+        return {"error": "No such task"}
+
+    try:
+        bottle.response.status = 200
+        return {"status": "ok", "result": brrr.read(task_name, (), kwargs)}
+    except KeyError:
+        bottle.response.status = 202
+        brrr.schedule(task_name, **kwargs)
+        return {"status": "accepted"}
 
 def init_brrr(reset_backends):
     # Check credentials
@@ -61,7 +80,8 @@ def worker():
 @cmd
 def server():
     init_brrr(True)
-    Srrrver.srrrv(brrr)
+    bottle.run(host="localhost", port=8333)
+
 
 def args2dict(args: Iterable[str]) -> dict[str, str]:
     """
