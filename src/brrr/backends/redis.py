@@ -195,7 +195,14 @@ class RedisStream(RichQueue):
     def setup(self):
         try:
             self.client.xgroup_create(self.queue, self.group, id='0', mkstream=True)
-        except redis.exceptions.ResponseError as e:
+        # Ideally we would want to catch ‘redis.exceptions.ResponseError’ here
+        # instead, but currently the entire production part of the code is
+        # dependency-free.  That works because the actual redis client is
+        # dependency-injected into the constructor.  The “real” solution is to
+        # set up the build system to offer redis as a peer dependency, in an
+        # “extras” group, but we’re not at that stage yet and this is an
+        # acceptable hack for now.
+        except Exception as e:
             if "BUSYGROUP Consumer Group name already exists" not in str(e):
                 raise
 
