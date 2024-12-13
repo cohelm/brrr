@@ -2,7 +2,7 @@ from brrr.backends.in_memory import InMemoryByteStore, InMemoryQueue
 import pytest
 
 from abc import ABC, abstractmethod
-from brrr.store import Call, CompareMismatch, Memory, Store, MemKey
+from brrr.store import AlreadyExists, Call, CompareMismatch, Memory, Store, MemKey
 
 
 class ByteStoreContract(ABC):
@@ -71,6 +71,16 @@ class ByteStoreContract(ABC):
 
         store[a1] = b"value-4"
         assert store[a1] == b"value-4"
+
+    def test_existing_key_error(self):
+        store = self.get_store()
+
+        a1 = MemKey("type-a", "id-1")
+
+        store[a1] = b"value-1"
+
+        with pytest.raises(AlreadyExists):
+            store[a1] = b"value-2"
 
     def test_key_error(self):
         store = self.get_store()

@@ -45,6 +45,7 @@ class Info:
 MemKey = namedtuple("MemKey", ["type", "id"])
 
 class CompareMismatch(Exception): ...
+class AlreadyExists(Exception): ...
 
 T = TypeVar("T")
 
@@ -152,7 +153,7 @@ class Memory:
             # Throwing over passing here; Because of idempotency, we only ever want
             # one value to be set for a given memo_key. If we silently ignored this here,
             # we could end up executing code with the wrong value
-            raise ValueError(f"set_value: value already set for {memo_key}")
+            raise AlreadyExists(f"set_value: value already set for {memo_key}")
 
     def get_info(self, task_name: str) -> Info:
         val = self.pickles[MemKey("info", task_name)]

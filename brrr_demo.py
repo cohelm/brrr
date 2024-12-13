@@ -29,7 +29,7 @@ def get_or_schedule_task(task_name: str):
         return {"status": "ok", "result": brrr.read(task_name, (), kwargs)}
     except KeyError:
         bottle.response.status = 202
-        brrr.schedule(task_name, **kwargs)
+        brrr.schedule(task_name, (), kwargs)
         return {"status": "accepted"}
 
 def init_brrr(reset_backends):

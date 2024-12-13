@@ -8,7 +8,7 @@ import socketserver
 import json
 from urllib.parse import parse_qsl
 
-from .store import Call, CompareMismatch, Memory, Store, input_hash
+from .store import AlreadyExists, Call, CompareMismatch, Memory, Store, input_hash
 from .queue import Queue, QueueIsClosed, QueueIsEmpty
 
 class Defer(Exception):
@@ -290,7 +290,14 @@ class Wrrrker:
                 self.brrr._schedule_call(call, memo_key)
             return
 
-        self.brrr.memory.set_value(call.memo_key, value)
+        # We can end up in a race against another worker to write the value.
+        # We only accept the first entry and the rest will be bounced
+        try:
+            self.brrr.memory.set_value(call.memo_key, value)
+        except AlreadyExists:
+            # It is possible that we can formally prove that this situation means we don't need to
+            # requeue here. Until then, let's just feel safer and run through any pending parents below.
+            pass
 
         # Now we need to make sure that we enqueue all the parents.
         # We keep some local state here while we try to compare-and-delete our way out
