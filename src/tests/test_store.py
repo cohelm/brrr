@@ -72,16 +72,6 @@ class ByteStoreContract(ABC):
         store[a1] = b"value-4"
         assert store[a1] == b"value-4"
 
-    def test_existing_key_error(self):
-        store = self.get_store()
-
-        a1 = MemKey("type-a", "id-1")
-
-        store[a1] = b"value-1"
-
-        with pytest.raises(AlreadyExists):
-            store[a1] = b"value-2"
-
     def test_key_error(self):
         store = self.get_store()
 
@@ -163,7 +153,7 @@ class TestMemory:
         assert memory.has_value("key")
         assert memory.get_value("key") == {"test": 1}
 
-        with pytest.raises(ValueError):
+        with pytest.raises(AlreadyExists):
             memory.set_value("key", {"test": 2})
 
     def test_pending_returns(self):
