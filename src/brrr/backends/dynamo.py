@@ -3,22 +3,16 @@ from __future__ import annotations
 import os
 import typing
 
-from ..store import MemKey, Store
+from ..store import CompareMismatch, MemKey, Store
 
 if typing.TYPE_CHECKING:
     from mypy_boto3_dynamodb import DynamoDBClient
 
 # The frame table layout is:
 #
-#   pk: FRAME_KEY
-#   sk: FRAME_KEY
-#   parent: The parent frame key
-#   memo: The memo key
-#
-# OR
-#
-#   pk: FRAME_KEY
-#   sk: A child's frame key
+#   pk: MEMO_KEY
+#   sk: "pending_returns"
+#   parents: list[str]
 #
 # OR
 #
@@ -55,10 +49,14 @@ class DynamoDbMemStore(Store):
         )
 
     def __getitem__(self, key: MemKey) -> bytes:
-        return self.client.get_item(
+        response = self.client.get_item(
             TableName=self.table_name,
             Key=self.key(key),
-        )["Item"]["value"]["B"]
+        )
+        if "Item" not in response:
+            raise KeyError(key)
+        return response["Item"]["value"]["B"]
+
 
     def __setitem__(self, key: MemKey, value: bytes):
         self.client.put_item(
@@ -75,11 +73,38 @@ class DynamoDbMemStore(Store):
             Key=self.key(key),
         )
 
-    def __iter__(self):
-        raise NotImplementedError
+    def compare_and_set(self, key: MemKey, value: bytes, expected: bytes | None):
+        ExpressionAttributeValues={":value": {"B": value}}
+        if expected is None:
+            ConditionExpression="attribute_not_exists(#value)"
+        else:
+            ExpressionAttributeValues[":expected"] = {"B": expected}
+            ConditionExpression="#value = :expected"
 
-    def __len__(self):
-        raise NotImplementedError
+        try:
+            self.client.update_item(
+                TableName=self.table_name,
+                Key=self.key(key),
+                UpdateExpression="SET #value = :value",
+                ExpressionAttributeNames={"#value": "value"},
+                ExpressionAttributeValues=ExpressionAttributeValues,
+                ConditionExpression=ConditionExpression,
+            )
+        except self.client.exceptions.ConditionalCheckFailedException:
+            raise CompareMismatch
+
+    def compare_and_delete(self, key: MemKey, expected: bytes):
+        try:
+            self.client.delete_item(
+                TableName=self.table_name,
+                Key=self.key(key),
+                ConditionExpression="attribute_exists(#value) AND #value = :expected",
+                # value is a reserved word in DynamoDB
+                ExpressionAttributeNames={"#value": "value"},
+                ExpressionAttributeValues={":expected": {"B": expected}},
+            )
+        except self.client.exceptions.ConditionalCheckFailedException as e:
+            raise CompareMismatch
 
     def create_table(self):
         try:

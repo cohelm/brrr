@@ -3,6 +3,7 @@
 import os
 import sys
 from typing import Iterable
+import time
 
 import boto3
 import redis
@@ -16,7 +17,9 @@ def init_brrr(reset_backends):
     boto3.client('sts').get_caller_identity()
 
     redis_client = redis.Redis(decode_responses=True)
-    queue = redis_.RedisQueue(redis_client, os.environ.get("REDIS_QUEUE_KEY", "r1"))
+    queue = redis_.RedisStream(redis_client, os.environ.get("REDIS_QUEUE_KEY", "r1"))
+    if reset_backends:
+        queue.setup()
 
     dynamo_client = boto3.client("dynamodb")
     store = dynamo.DynamoDbMemStore(dynamo_client, os.environ.get("DYNAMODB_TABLE_NAME", "brrr"))
@@ -77,6 +80,30 @@ def schedule(job: str, *args: str):
     """
     init_brrr(False)
     brrr.schedule(job, (), args2dict(args))
+
+@cmd
+def monitor():
+    init_brrr(False)
+    redis_client = redis.Redis()
+    queue = redis_.RedisStream(redis_client, os.environ.get("REDIS_QUEUE_KEY", "r1"))
+    while True:
+        print(queue.get_info())
+        time.sleep(1)
+
+@cmd
+def reset():
+    table_name = os.environ.get("DYNAMODB_TABLE_NAME", "brrr")
+    dynamo_client = boto3.client("dynamodb")
+    try:
+        dynamo_client.delete_table(TableName=table_name)
+    except Exception as e:
+        # Table does not exist
+        if "ResourceNotFoundException" not in str(e):
+            raise
+
+    redis_client = redis.Redis()
+    redis_client.flushall()
+    init_brrr(True)
 
 def main():
     f = cmds.get(sys.argv[1]) if len(sys.argv) > 1 else None

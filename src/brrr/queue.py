@@ -1,3 +1,4 @@
+from abc import ABC, abstractmethod
 from dataclasses import dataclass
 
 
@@ -9,10 +10,17 @@ class Message:
     body: str
     receipt_handle: str
 
+@dataclass
+class QueueInfo:
+    """
+    Approximate info about the queue
+    """
+    num_messages: int
+    num_inflight_messages: int
 
 # Infra abstractions
 
-class Queue:
+class Queue(ABC):
     # Inspired by SQS: maximum time for a get_message call to block while
     # waiting for new messages, if there are currently no messages on the queue.
     # Just as with SQS, if there is a message, return immediately.  This value
@@ -22,14 +30,16 @@ class Queue:
     # only while there are no messages available.
     recv_block_secs: int = 20
 
-    async def get_message_async(self) -> Message:
-        return self.get_message()
-    def get_message(self) -> Message:
-        raise NotImplementedError
-    def delete_message(self, receipt_handle: str):
-        raise NotImplementedError
-    def set_message_timeout(self, receipt_handle: str, seconds: int):
-        raise NotImplementedError
+    @abstractmethod
+    async def get_message_async(self) -> Message: ...
+    @abstractmethod
+    def get_message(self) -> Message: ...
+    @abstractmethod
+    def delete_message(self, receipt_handle: str): ...
+    @abstractmethod
+    def set_message_timeout(self, receipt_handle: str, seconds: int): ...
+    @abstractmethod
+    def get_info(self) -> QueueInfo: ...
 
 
 class RichQueue(Queue):

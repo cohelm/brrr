@@ -1,7 +1,7 @@
+from abc import ABC, abstractmethod
 from dataclasses import dataclass
-from typing import Any
+from typing import Any, TypeVar
 from collections import namedtuple
-from collections.abc import MutableMapping
 
 import pickle
 
@@ -26,31 +26,6 @@ class Call:
         return input_hash(self.task_name, self.argv)
 
 
-# A store of task frame contexts. A frame looks something like:
-#
-#   memo_key: A hash of the task and its arguments
-#   children: A dictionary of child tasks keys, with a bool indicating whether they have been computed (This could be a set)
-#   parent: The caller's frame_key
-#
-# In the real world, this would be some sort of distributed store,
-# optimised for specific access patterns
-@dataclass
-class Frame:
-    """
-    A frame represents a function call with a parent and a number of child frames
-    """
-    memo_key: str
-    # The empty string means no parent
-    parent_key: str
-    # This one is redundant
-    # children: dict
-
-    @property
-    def frame_key(self):
-        return input_hash(self.parent_key, self.memo_key)
-
-
-
 @dataclass
 class Info:
     """
@@ -66,15 +41,48 @@ class Info:
 
 MemKey = namedtuple("MemKey", ["type", "id"])
 
-# All operations MUST be idempotent
-# All getters MUST throw a KeyError for missing keys
-Store = MutableMapping[MemKey, bytes]
+class CompareMismatch(Exception): ...
 
-class PickleJar:
+T = TypeVar("T")
+
+class Store[T](ABC):
+    """
+    A key-value store with a dict-like interface.
+    This expresses the requirements for a store to be suitable as a Memory backend.
+
+    All mutate operations MUST be idempotent
+    All getters MUST throw a KeyError for missing keys
+    """
+    @abstractmethod
+    def __contains__(self, key: MemKey) -> bool: ...
+    @abstractmethod
+    def __getitem__(self, key: MemKey) -> T: ...
+    @abstractmethod
+    def __setitem__(self, key: MemKey, value: T): ...
+    @abstractmethod
+    def __delitem__(self, key: MemKey): ...
+    @abstractmethod
+    def compare_and_set(self, key: MemKey, value: T, expected: T | None):
+        """
+        Only set the value, as a transaction, if the existing value matches the expected value
+        Or, if expected value is None, if the key does not exist
+        """
+        ...
+    @abstractmethod
+    def compare_and_delete(self, key: MemKey, expected: T):
+        """
+        Only delete the value, as a transaction, if the existing value matches the expected value
+        This is a noop if the expected value is None. While we could allow it, we've chosen not to,
+        to remind the author that they're trying to delete a key that they know doesn't exist,
+        which sounds like a bug.
+        """
+        ...
+
+class PickleJar(Store[Any]):
     """
     A dict-like object that pickles on set and unpickles on get
     """
-    pickles: MutableMapping[MemKey, bytes]
+    pickles: Store[bytes]
 
     def __init__(self, store: Store):
         self.pickles = store
@@ -88,6 +96,21 @@ class PickleJar:
     def __setitem__(self, key: MemKey, value):
         self.pickles[key] = pickle.dumps(value)
 
+    def __delitem__(self, key: MemKey, value):
+        del self.pickles[key]
+
+    # BEWARE `None` has special semantics here. None means "expect key to be missing"
+    # which means we never pickle the value `None`. TBD whether we want to support
+    # these semantics, or instead use a "Optional" value wrapper
+
+    # Throw CompareMismatch if the expected value does not match the actual value
+    def compare_and_set(self, key: MemKey, value: Any, expected: Any | None):
+        assert value is not None, "Value cannot be None"
+        self.pickles.compare_and_set(key, pickle.dumps(value), None if expected is None else pickle.dumps(expected))
+
+    # Throw CompareMismatch if the expected value does not match the actual value
+    def compare_and_delete(self, key: MemKey, expected: Any):
+        self.pickles.compare_and_delete(key, None if expected is None else pickle.dumps(expected))
 
 class Memory:
     """
@@ -96,14 +119,13 @@ class Memory:
     def __init__(self, store: Store):
         self.pickles = PickleJar(store)
 
-    def get_frame(self, frame_key: str) -> Frame:
-        return self.pickles[MemKey("frame", frame_key)]
-
-    def set_frame(self, frame: Frame):
-        self.pickles[MemKey("frame", frame.frame_key)] = frame
-
     def get_call(self, memo_key: str) -> Call:
-        return self.pickles[MemKey("call", memo_key)]
+        val = self.pickles[MemKey("call", memo_key)]
+        assert isinstance(val, Call)
+        return val
+
+    def has_call(self, call: Call):
+        return MemKey("call", call.memo_key) in self.pickles
 
     def set_call(self, call: Call):
         self.pickles[MemKey("call", call.memo_key)] = call
@@ -115,15 +137,59 @@ class Memory:
         return self.pickles[MemKey("value", memo_key)]
 
     def set_value(self, memo_key: str, value: Any):
-        self.pickles[MemKey("value", memo_key)] = value
+        # Only set if the value is not already set
+        try:
+            self.pickles.compare_and_set(MemKey("value", memo_key), value, None)
+        except CompareMismatch:
+            pass
 
     def get_info(self, task_name: str) -> Info:
-        return self.pickles[MemKey("info", task_name)]
+        val = self.pickles[MemKey("info", task_name)]
+        assert isinstance(val, Info)
+        return val
 
     def set_info(self, task_name: str, value: Info):
         self.pickles[MemKey("info", task_name)] = value
 
-    def get_stack_trace(self, frame_key: str) -> list[Frame]:
+    def get_pending_returns(self, memo_key: str) -> set[str]:
+        val = self.pickles[MemKey("pending_returns", memo_key)]
+        val = set(val.split(","))
+        assert isinstance(val, set) and all(isinstance(x, str) for x in val)
+        return val
+
+    def add_pending_returns(self, memo_key: str, updated_keys: set[str]):
+        # TODO is there a number of retries we should throw for?
+        count = 0
+        while True:
+            try:
+                existing_keys = self.get_pending_returns(memo_key)
+            except KeyError:
+                existing_keys = None
+            else:
+                updated_keys |= existing_keys
+
+            try:
+                keys_to_set = ",".join(sorted(updated_keys))
+                existing_keys = None if existing_keys is None else ",".join(sorted(existing_keys))
+                self.pickles.compare_and_set(MemKey("pending_returns", memo_key), keys_to_set, existing_keys)
+            except CompareMismatch:
+                count += 1
+                continue
+            else:
+                return
+
+    def set_pending_returns(self, memo_key: str, updated_keys: set[str], existing_keys: set[str] | None):
+        updated_keys = ",".join(sorted(updated_keys))
+        existing_keys = ",".join(sorted(existing_keys))
+        self.pickles.compare_and_set(MemKey("pending_returns", memo_key), updated_keys, existing_keys)
+
+    def delete_pending_returns(self, memo_key: str, existing_keys: set[str] | None):
+        existing_keys = None if existing_keys is None else ",".join(sorted(existing_keys))
+        self.pickles.compare_and_delete(MemKey("pending_returns", memo_key), existing_keys)
+
+    # This has become quite puzzling; call graphs are no longer flat,
+    # but a child can have many parents, and they are only stored while pending.
+    def get_stack_trace(self, frame_key: str) -> list[Call]:
         frames = []
         while frame_key:
             frame = self.get_frame(frame_key)
