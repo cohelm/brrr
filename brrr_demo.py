@@ -33,9 +33,6 @@ def get_or_schedule_task(task_name: str):
         return {"status": "accepted"}
 
 def init_brrr(reset_backends):
-    # Check credentials
-    boto3.client('sts').get_caller_identity()
-
     redis_client = redis.Redis(decode_responses=True)
     queue = redis_.RedisStream(redis_client, os.environ.get("REDIS_QUEUE_KEY", "r1"))
     if reset_backends:

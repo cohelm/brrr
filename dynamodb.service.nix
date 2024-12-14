@@ -12,31 +12,30 @@
 # You should have received a copy of the GNU Affero General Public License
 # along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-# Brrr-demo module for process-compose-flake
+# Dynamodb module for process-compose-flake
 
-{ config, pkgs, name, lib, ... }: {
-  options = with lib.types; {
-    # You’ll want to override this unless you use an overlay
-    package = lib.mkPackageOption pkgs "brrr-demo" { };
+{ config, pkgs, lib, ... }: {
+  options.services.dynamodb = with lib.types; {
+    enable = lib.mkEnableOption "Enable Dynamodb local service";
     args = lib.mkOption {
       default = [];
       type = listOf str;
     };
-    environment = lib.mkOption {
-      type = types.attrsOf types.str;
-      default = { };
-      example = {
-        AWS_ENDPOINT_URL = "http://localhost:12345";
-      };
-      description = ''
-        Extra environment variables passed to the `brrr-demo` process.
+    dataDir = lib.mkOption {
+      default = "data/dynamodb";
+      type = str;
+    };
+  };
+  config = let
+    cfg = config.services.dynamodb;
+  in
+    lib.mkIf cfg.enable {
+      settings.processes.dynamodb.command = let
+        bin = lib.getExe pkgs.dynamodb-local;
+        dir = lib.escapeShellArg cfg.dataDir;
+      in ''
+        mkdir -p ${dir}
+        ${bin} -dbPath ${dir} ${lib.escapeShellArgs cfg.args}
       '';
     };
-  };
-  config = {
-    outputs.settings.processes.${name} = {
-      environment = config.environment;
-      command = "${lib.getExe config.package} ${lib.escapeShellArgs config.args}";
-    };
-  };
 }

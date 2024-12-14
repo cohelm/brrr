@@ -56,14 +56,9 @@ Drawback: the call graph must be idempotent, meaning: for the same inputs, a tas
 
 ## Demo
 
-### Requirements
+Requires [Nix](https://nixos.org), with flakes enabled.
 
-- Docker
-- [Nix](https://nixos.org)
-
-### Instructions
-
-Make sure you have Docker running, and start the full demo:
+You can start the full demo without installation:
 
 ```
 $ nix run github:nobssoftware/brrr#demo

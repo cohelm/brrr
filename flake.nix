@@ -46,33 +46,41 @@
       inputs.devshell.flakeModule
     ];
     # A reusable process-compose module (for flake-parts) with either a full
+
     # demo environment, or just the dependencies if you want to run a server
     # manually.
     flake = {
-      processComposeModules.default = { pkgs, ... }: {
-        imports = [
-          ./localstack.nix
-          (inputs.services-flake.lib.multiService ./brrr-demo.nix)
-        ];
-        services = let
-          demoEnv = {
-            AWS_ENDPOINT_URL = "http://localhost:4566";
-            AWS_ACCESS_KEY_ID = "000000000000";
-            AWS_SECRET_ACCESS_KEY = "localstack-foo";
-            AWS_DEFAULT_REGION = "us-east-1";
-          };
-        in {
-          redis.r1.enable = true;
-          localstack.enable = true;
-          brrr-demo.worker = {
-            package = self.packages.${pkgs.system}.brrr-demo;
-            args = [ "worker" ];
-            environment = demoEnv;
-          };
-          brrr-demo.server = {
-            package = self.packages.${pkgs.system}.brrr-demo;
-            args = [ "server" ];
-            environment = demoEnv;
+      processComposeModules = {
+        brrr-demo = inputs.services-flake.lib.multiService ./brrr-demo.service.nix;
+        dynamodb = import ./dynamodb.service.nix;
+        localstack = import ./localstack.service.nix;
+         default = { pkgs, ... }: {
+          imports = with self.processComposeModules; [
+            brrr-demo
+            dynamodb
+            # Unused for now but will probably be reintroduced for an SQS demo
+            # soon.
+            localstack
+          ];
+          services = let
+            demoEnv = {
+              AWS_ENDPOINT_URL = "http://localhost:8000";
+              AWS_ACCESS_KEY_ID = "000000000000";
+              AWS_SECRET_ACCESS_KEY = "fake";
+            };
+          in {
+            redis.r1.enable = true;
+            dynamodb.enable = true;
+            brrr-demo.worker = {
+              package = self.packages.${pkgs.system}.brrr-demo;
+              args = [ "worker" ];
+              environment = demoEnv;
+            };
+            brrr-demo.server = {
+              package = self.packages.${pkgs.system}.brrr-demo;
+              args = [ "server" ];
+              environment = demoEnv;
+            };
           };
         };
       };
@@ -95,6 +103,11 @@
       );
     in {
       config = {
+        _module.args.pkgs = import inputs.nixpkgs {
+          inherit system;
+          # dynamodb
+          config.allowUnfree = true;
+        };
         process-compose.demo = {
           imports = [
             inputs.services-flake.processComposeModules.default
