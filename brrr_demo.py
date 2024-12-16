@@ -48,9 +48,10 @@ def init_brrr(reset_backends):
 @task
 def fib(n: int, salt=None):
     match n:
-        case 0: return 0
-        case 1: return 1
-        case _: return sum(fib.map([[n - 2, salt], [n - 1, salt]]))
+        case 0 | 1:
+            return n
+        case _:
+            return sum(fib.map([[n - 2, salt], [n - 1, salt]]))
 
 @task
 def fib_and_print(n: str, salt = None):

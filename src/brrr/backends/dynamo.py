@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import os
 import typing
 
 from ..store import CompareMismatch, MemKey, Store
@@ -103,7 +102,7 @@ class DynamoDbMemStore(Store):
                 ExpressionAttributeNames={"#value": "value"},
                 ExpressionAttributeValues={":expected": {"B": expected}},
             )
-        except self.client.exceptions.ConditionalCheckFailedException as e:
+        except self.client.exceptions.ConditionalCheckFailedException:
             raise CompareMismatch
 
     def create_table(self):
