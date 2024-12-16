@@ -162,16 +162,30 @@
             config.Entrypoint = [ "${lib.getExe pkg}" ];
           };
         };
-        checks.pytest = pkgs.stdenvNoCC.mkDerivation {
-          name = "pytest";
-          nativeBuildInputs = [ self'.packages.dev ];
-          src = lib.cleanSource ./.;
-          buildPhase = ''
-            pytest
-          '';
-          installPhase = ''
-            touch $out
-          '';
+        checks = {
+          pytest = pkgs.stdenvNoCC.mkDerivation {
+            name = "pytest";
+            nativeBuildInputs = [ self'.packages.dev ];
+            src = lib.cleanSource ./.;
+            buildPhase = ''
+              pytest
+            '';
+            installPhase = ''
+              touch $out
+            '';
+          };
+          ruff = pkgs.stdenvNoCC.mkDerivation {
+            name = "ruff";
+            nativeBuildInputs = [ self'.packages.dev ];
+            src = lib.cleanSource ./.;
+            # Don’t check tests for now though we should
+            buildPhase = ''
+              ruff check src
+            '';
+            installPhase = ''
+              touch $out
+            '';
+          };
         };
         devshells = {
           impure = {
