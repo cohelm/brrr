@@ -1,10 +1,12 @@
 from .brrr import Brrr
 
-# For ergonomics, we provide a singleton and a bunch of proxies as the module interface
-brrr = Brrr()
+# For ergonomics, we provide a singleton and a bunch of proxies as the module interface.
+_brrr = Brrr()
 
-setup = brrr.setup
-gather = brrr.gather
-wrrrk = brrr.wrrrk
-task = brrr.register_task
-schedule = brrr.schedule
+setup = _brrr.setup
+gather = _brrr.gather
+read = _brrr.read
+wrrrk = _brrr.wrrrk
+task = _brrr.register_task
+tasks = _brrr.tasks
+schedule = _brrr.schedule

@@ -11,7 +11,7 @@ import bottle
 
 from brrr.backends import redis as redis_, dynamo
 import brrr
-from brrr import task, wrrrk, setup, brrr
+from brrr import task
 
 @bottle.route("/<task_name>")
 def get_or_schedule_task(task_name: str):
@@ -43,7 +43,7 @@ def init_brrr(reset_backends):
     if reset_backends:
         store.create_table()
 
-    setup(queue, store)
+    brrr.setup(queue, store)
 
 @task
 def fib(n: int, salt=None):
@@ -73,7 +73,7 @@ def cmd(f):
 @cmd
 def worker():
     init_brrr(False)
-    wrrrk(1)
+    brrr.wrrrk(1)
 
 @cmd
 def server():
