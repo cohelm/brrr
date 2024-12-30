@@ -7,6 +7,7 @@ from ..store import CompareMismatch, MemKey, Store
 if typing.TYPE_CHECKING:
     from mypy_boto3_dynamodb import DynamoDBClient
 
+
 # The frame table layout is:
 #
 #   pk: MEMO_KEY
@@ -32,10 +33,7 @@ class DynamoDbMemStore(Store):
     table_name: str
 
     def key(self, mem_key: MemKey) -> dict:
-        return {
-            "pk": {"S": mem_key.id},
-            "sk": {"S": mem_key.type}
-        }
+        return {"pk": {"S": mem_key.id}, "sk": {"S": mem_key.type}}
 
     def __init__(self, client: DynamoDBClient, table_name: str):
         self.client = client
@@ -56,14 +54,9 @@ class DynamoDbMemStore(Store):
             raise KeyError(key)
         return response["Item"]["value"]["B"]
 
-
     def __setitem__(self, key: MemKey, value: bytes):
         self.client.put_item(
-            TableName=self.table_name,
-            Item={
-                **self.key(key),
-                "value": {"B": value}
-            }
+            TableName=self.table_name, Item={**self.key(key), "value": {"B": value}}
         )
 
     def __delitem__(self, key: MemKey):
@@ -73,12 +66,12 @@ class DynamoDbMemStore(Store):
         )
 
     def compare_and_set(self, key: MemKey, value: bytes, expected: bytes | None):
-        ExpressionAttributeValues={":value": {"B": value}}
+        ExpressionAttributeValues = {":value": {"B": value}}
         if expected is None:
-            ConditionExpression="attribute_not_exists(#value)"
+            ConditionExpression = "attribute_not_exists(#value)"
         else:
             ExpressionAttributeValues[":expected"] = {"B": expected}
-            ConditionExpression="#value = :expected"
+            ConditionExpression = "#value = :expected"
 
         try:
             self.client.update_item(
@@ -110,30 +103,15 @@ class DynamoDbMemStore(Store):
             self.client.create_table(
                 TableName=self.table_name,
                 KeySchema=[
-                    {
-                        "AttributeName": "pk",
-                        "KeyType": "HASH"
-                    },
-                    {
-                        "AttributeName": "sk",
-                        "KeyType": "RANGE"
-                    }
+                    {"AttributeName": "pk", "KeyType": "HASH"},
+                    {"AttributeName": "sk", "KeyType": "RANGE"},
                 ],
                 AttributeDefinitions=[
-                    {
-                        "AttributeName": "pk",
-                        "AttributeType": "S"
-                    },
-                    {
-                        "AttributeName": "sk",
-                        "AttributeType": "S"
-                    }
+                    {"AttributeName": "pk", "AttributeType": "S"},
+                    {"AttributeName": "sk", "AttributeType": "S"},
                 ],
                 # TODO make this configurable? Should this method even exist?
-                ProvisionedThroughput={
-                    "ReadCapacityUnits": 5,
-                    "WriteCapacityUnits": 5
-                }
+                ProvisionedThroughput={"ReadCapacityUnits": 5, "WriteCapacityUnits": 5},
             )
         except self.client.exceptions.ResourceInUseException:
             pass

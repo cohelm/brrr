@@ -4,6 +4,7 @@ from abc import ABC, abstractmethod
 from brrr.queue import Queue, QueueIsEmpty, QueueIsClosed
 from brrr.backends.in_memory import InMemoryQueue
 
+
 class QueueContract(ABC):
     throws_closes: bool
     has_accurate_info: bool
@@ -19,8 +20,7 @@ class QueueContract(ABC):
     # TODO Move this to a mixin? This is pretty ugly.
     #      One problem is that we have no control over clients, which usually do the closing
     @abstractmethod
-    def close_queue(self):
-        ...
+    def close_queue(self): ...
 
     def test_queue_raises_empty(self):
         queue = self.get_queue()

@@ -5,25 +5,31 @@ from dataclasses import dataclass
 class QueueIsEmpty(Exception):
     pass
 
+
 class QueueIsClosed(Exception):
     """
     Queue implementations may raise this exception for workers to shut down gracefully
     """
+
 
 @dataclass
 class Message:
     body: str
     receipt_handle: str
 
+
 @dataclass
 class QueueInfo:
     """
     Approximate info about the queue
     """
+
     num_messages: int
     num_inflight_messages: int
 
+
 # Infra abstractions
+
 
 class Queue(ABC):
     # Inspired by SQS: maximum time for a get_message call to block while

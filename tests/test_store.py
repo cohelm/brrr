@@ -123,6 +123,7 @@ class ByteStoreContract(ABC):
         with pytest.raises(KeyError):
             store[a1]
 
+
 class TestMemory:
     def get_memory(self) -> Memory:
         store = InMemoryByteStore()
@@ -179,6 +180,7 @@ class TestMemory:
         memory.delete_pending_returns("key", {"a", "b", "c", "d"})
         with pytest.raises(KeyError):
             assert not memory.get_pending_returns("key")
+
 
 class TestInMemoryByteStore(ByteStoreContract):
     def get_store(self) -> Store[bytes]:

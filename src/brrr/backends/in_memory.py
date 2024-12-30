@@ -4,10 +4,12 @@ from brrr.store import CompareMismatch
 from ..queue import Queue, Message, QueueInfo, QueueIsClosed, QueueIsEmpty
 from ..store import Store
 
+
 class InMemoryQueue(Queue):
     """
     This queue does not do receipts
     """
+
     messages = collections.deque()
     closed = False
 
@@ -19,7 +21,7 @@ class InMemoryQueue(Queue):
             raise QueueIsClosed
         if not self.messages:
             raise QueueIsEmpty
-        return Message(self.messages.popleft(), '')
+        return Message(self.messages.popleft(), "")
 
     async def get_message_async(self):
         return self.get_message()
@@ -42,6 +44,7 @@ class InMemoryByteStore(Store[bytes]):
     """
     A store that stores bytes
     """
+
     store: dict
 
     def __init__(self):

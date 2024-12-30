@@ -122,10 +122,12 @@ redis.call('XACK', stream, group, msg_id)
 redis.call('XDEL', stream, msg_id)
 """
 
+
 class RedisQueue(Queue):
     """
     Single-topic queue on Redis using LPOP and RPUSH
     """
+
     client: redis.Redis
     key: str
 
@@ -143,13 +145,15 @@ class RedisQueue(Queue):
 
     def get_message(self) -> Message:
         # This is not an async client
-        ret = typing.cast(list[Any], self.client.blpop([self.key], self.recv_block_secs))
+        ret = typing.cast(
+            list[Any], self.client.blpop([self.key], self.recv_block_secs)
+        )
         if not ret:
             raise QueueIsEmpty
 
         if not len(ret) >= 2:
             raise Exception(f"Unexpected length of return value from BLPOP: {len(ret)}")
-        return Message(ret[1], '')
+        return Message(ret[1], "")
 
     def get_message_async(self):
         # TODO: This is a blocking operation right now
@@ -194,7 +198,7 @@ class RedisStream(RichQueue):
 
     def setup(self):
         try:
-            self.client.xgroup_create(self.queue, self.group, id='0', mkstream=True)
+            self.client.xgroup_create(self.queue, self.group, id="0", mkstream=True)
         # Ideally we would want to catch ‘redis.exceptions.ResponseError’ here
         # instead, but currently the entire production part of the code is
         # dependency-free.  That works because the actual redis client is
@@ -208,11 +212,18 @@ class RedisStream(RichQueue):
 
     def put(self, body: str):
         # Messages can not be added to specific groups, so we just create a stream per topic
-        self.client.xadd(self.queue, {'body': body})
+        self.client.xadd(self.queue, {"body": body})
 
     def get_message(self) -> Message:
-        keys = self.queue,
-        argv = self.group, self.consumer, self.rate_limit_pool_capacity, self.replenish_rate_per_second, self.max_concurrency, self.job_timeout_ms
+        keys = (self.queue,)
+        argv = (
+            self.group,
+            self.consumer,
+            self.rate_limit_pool_capacity,
+            self.replenish_rate_per_second,
+            self.max_concurrency,
+            self.job_timeout_ms,
+        )
         response = self.client.eval(DEQUEUE_FUNCTION, len(keys), *keys, *argv)
         if not response:
             # TODO: Do not wait indiscriminately but simulate blpop.  How do you
@@ -230,20 +241,32 @@ class RedisStream(RichQueue):
     def delete_message(self, receipt_handle: str):
         # The receipt handle here must match the message ID
         # self.client.xack(self.queue, self.group, receipt_handle)
-        keys = self.queue,
-        argv = self.group, receipt_handle,
+        keys = (self.queue,)
+        argv = (
+            self.group,
+            receipt_handle,
+        )
         self.client.eval(ACK_FUNCTION, len(keys), *keys, *argv)
 
     def set_message_timeout(self, receipt_handle: str, seconds: int):
         # The seconds don't do anything for now; I wasn't sure how to translate a fixed timeout to the Redis model
         # At least this resets the idle time @jkz
-        self.client.xclaim(self.queue, self.group, self.consumer, min_idle_time=0, message_ids=[receipt_handle])
+        self.client.xclaim(
+            self.queue,
+            self.group,
+            self.consumer,
+            min_idle_time=0,
+            message_ids=[receipt_handle],
+        )
 
     def get_info(self):
         return QueueInfo(
             num_messages=self.client.xlen(self.queue),
-            num_inflight_messages=self.client.xpending(self.queue, self.group)["pending"],
+            num_inflight_messages=self.client.xpending(self.queue, self.group)[
+                "pending"
+            ],
         )
+
 
 class RedisMemStore(Store):
     client: redis.Redis
@@ -270,13 +293,16 @@ class RedisMemStore(Store):
         return self.client.exists(self.key(key)) == 1
 
     def compare_and_set(self, key: str, value: bytes, expected: bytes):
-        keys = self.key(key),
-        argv = value, expected,
+        keys = (self.key(key),)
+        argv = (
+            value,
+            expected,
+        )
         if not self.client.eval(COMPARE_AND_SET_SCRIPT, len(keys), *keys, *argv):
             raise CompareMismatch
 
     def compare_and_delete(self, key: str, expected: bytes):
-        keys = self.key(key),
-        argv = expected,
+        keys = (self.key(key),)
+        argv = (expected,)
         if not self.client.eval(COMPARE_AND_DELETE_SCRIPT, len(keys), *keys, *argv):
             raise CompareMismatch

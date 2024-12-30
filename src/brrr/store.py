@@ -7,6 +7,7 @@ import pickle
 
 from hashlib import sha256
 
+
 def input_hash(*args):
     return sha256(":".join(map(str, args)).encode()).hexdigest()
 
@@ -14,6 +15,7 @@ def input_hash(*args):
 # Objects to be stored
 
 # A memoization cache for tasks that have already been computed, based on their task name and input arguments
+
 
 # Using the same memo key, we store the task and its argv here so we can retrieve them in workers
 @dataclass
@@ -35,6 +37,7 @@ class Info:
     Optional information about a task.
     Does not affect the computation, but may instruct orchestration
     """
+
     description: str | None
     timeout_seconds: int | None
     retries: int | None
@@ -44,10 +47,15 @@ class Info:
 
 MemKey = namedtuple("MemKey", ["type", "id"])
 
+
 class CompareMismatch(Exception): ...
+
+
 class AlreadyExists(Exception): ...
 
+
 T = TypeVar("T")
+
 
 class Store[T](ABC):
     """
@@ -57,6 +65,7 @@ class Store[T](ABC):
     All mutate operations MUST be idempotent
     All getters MUST throw a KeyError for missing keys
     """
+
     @abstractmethod
     def __contains__(self, key: MemKey) -> bool: ...
     @abstractmethod
@@ -72,6 +81,7 @@ class Store[T](ABC):
         Or, if expected value is None, if the key does not exist
         """
         ...
+
     @abstractmethod
     def compare_and_delete(self, key: MemKey, expected: T):
         """
@@ -82,10 +92,12 @@ class Store[T](ABC):
         """
         ...
 
+
 class PickleJar(Store[Any]):
     """
     A dict-like object that pickles on set and unpickles on get
     """
+
     pickles: Store[bytes]
 
     def __init__(self, store: Store):
@@ -110,16 +122,24 @@ class PickleJar(Store[Any]):
     # Throw CompareMismatch if the expected value does not match the actual value
     def compare_and_set(self, key: MemKey, value: Any, expected: Any | None):
         assert value is not None, "Value cannot be None"
-        self.pickles.compare_and_set(key, pickle.dumps(value), None if expected is None else pickle.dumps(expected))
+        self.pickles.compare_and_set(
+            key,
+            pickle.dumps(value),
+            None if expected is None else pickle.dumps(expected),
+        )
 
     # Throw CompareMismatch if the expected value does not match the actual value
     def compare_and_delete(self, key: MemKey, expected: Any):
-        self.pickles.compare_and_delete(key, None if expected is None else pickle.dumps(expected))
+        self.pickles.compare_and_delete(
+            key, None if expected is None else pickle.dumps(expected)
+        )
+
 
 class Memory:
     """
     A memstore that uses a PickleJar as its backend
     """
+
     def __init__(self, store: Store):
         self.pickles = PickleJar(store)
 
@@ -187,18 +207,30 @@ class Memory:
                 # could use lists and keep them sorted and is a safe compare across implementations.
                 # This hack gets us to v1
                 keys_to_set = ",".join(sorted(updated_keys))
-                keys_to_match = None if existing_keys is None else ",".join(sorted(existing_keys))
-                self.pickles.compare_and_set(MemKey("pending_returns", memo_key), keys_to_set, keys_to_match)
+                keys_to_match = (
+                    None if existing_keys is None else ",".join(sorted(existing_keys))
+                )
+                self.pickles.compare_and_set(
+                    MemKey("pending_returns", memo_key), keys_to_set, keys_to_match
+                )
             except CompareMismatch:
                 continue
             else:
                 return
 
-    def set_pending_returns(self, memo_key: str, updated_keys: set[str], existing_keys: set[str] | None):
+    def set_pending_returns(
+        self, memo_key: str, updated_keys: set[str], existing_keys: set[str] | None
+    ):
         updated_keys = ",".join(sorted(updated_keys))
         existing_keys = ",".join(sorted(existing_keys))
-        self.pickles.compare_and_set(MemKey("pending_returns", memo_key), updated_keys, existing_keys)
+        self.pickles.compare_and_set(
+            MemKey("pending_returns", memo_key), updated_keys, existing_keys
+        )
 
     def delete_pending_returns(self, memo_key: str, existing_keys: set[str] | None):
-        existing_keys = None if existing_keys is None else ",".join(sorted(existing_keys))
-        self.pickles.compare_and_delete(MemKey("pending_returns", memo_key), existing_keys)
+        existing_keys = (
+            None if existing_keys is None else ",".join(sorted(existing_keys))
+        )
+        self.pickles.compare_and_delete(
+            MemKey("pending_returns", memo_key), existing_keys
+        )

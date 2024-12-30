@@ -2,15 +2,19 @@ from typing import Callable
 
 from .brrr import Task
 
+
 class CompatTask(Task):
     def to_deployment(self):
         return self
 
+
 def serve(*tasks):
     pass
 
+
 def deploy(*tasks):
     pass
+
 
 def task(
     fn=None,
@@ -23,13 +27,14 @@ def task(
     retries: int = None,
     retry_delay_seconds: int = None,
     log_prints: bool,
-    **kwargs
+    **kwargs,
 ):
     def decorator(_fn):
         return CompatTask(
             _fn,
             name=name or _fn.__name__,
         )
+
     return decorator if fn is None else decorator(fn)
 
 
@@ -45,4 +50,11 @@ def flow(
     validate_parameters: bool = None,
     version: str = None,
 ):
-    return task(fn, name=name, description=description, timeout_seconds=timeout_seconds, retries=retries, retry_delay_seconds=retry_delay_seconds)
+    return task(
+        fn,
+        name=name,
+        description=description,
+        timeout_seconds=timeout_seconds,
+        retries=retries,
+        retry_delay_seconds=retry_delay_seconds,
+    )

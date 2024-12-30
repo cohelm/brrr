@@ -7,31 +7,37 @@ from .queue import Queue, QueueIsClosed, QueueIsEmpty
 
 logger = logging.getLogger(__name__)
 
+
 class Defer(Exception):
     """
     When a task is called and hasn't been computed yet, a Defer exception is raised
     Workers catch this exception and schedule the task to be computed
     """
+
     calls: list[Call]
+
     def __init__(self, calls: list[Call]):
         self.calls = calls
+
 
 class Brrr:
     """
     All state for brrr to function wrapped in a container.
     """
+
     def requires_setup(method):
         def wrapper(self, *args, **kwargs):
             if self.queue is None or self.memory is None:
                 raise Exception("Brrr not set up")
             return method(self, *args, **kwargs)
+
         return wrapper
 
     # The worker loop (as of writing) is synchronous so it can safely set a
     # local global variable to indicate that it is a worker thread, which, for
     # tasks, means that their Defer raises will be caught and handled by the
     # worker
-    worker_singleton: Union['Wrrrker', None]
+    worker_singleton: Union["Wrrrker", None]
 
     # A storage backend for calls, values and pending returns
     memory: Memory | None
@@ -39,7 +45,7 @@ class Brrr:
     queue: Queue | None
 
     # Dictionary of task_name to task instance
-    tasks = dict[str, 'Task']
+    tasks = dict[str, "Task"]
 
     def __init__(self):
         self.tasks = {}
@@ -50,6 +56,7 @@ class Brrr:
     # TODO do we like the idea of brrr as a context manager?
     def __enter__(self):
         pass
+
     def __exit__(self, exc_type, exc_value, traceback):
         if hasattr(self.queue, "__exit__"):
             self.queue.__exit__(exc_type, exc_value, traceback)
@@ -64,7 +71,6 @@ class Brrr:
 
     def are_we_inside_worker_context(self) -> bool:
         return self.worker_singleton
-
 
     @requires_setup
     def gather(self, *task_lambdas) -> list[Any]:
@@ -132,7 +138,6 @@ class Brrr:
         memo_key = Call(task_name, (args, kwargs)).memo_key
         return self.memory.get_value(memo_key)
 
-
     @requires_setup
     def evaluate(self, call: Call) -> Any:
         """
@@ -141,14 +146,14 @@ class Brrr:
         task = self.tasks[call.task_name]
         return task.evaluate(call.argv)
 
-    def register_task(self, fn: Callable, name: str = None) -> 'Task':
+    def register_task(self, fn: Callable, name: str = None) -> "Task":
         task = Task(self, fn, name)
         if task.name in self.tasks:
             raise Exception(f"Task {task.name} already exists")
         self.tasks[task.name] = task
         return task
 
-    def task(self, fn: Callable, name: str = None) -> 'Task':
+    def task(self, fn: Callable, name: str = None) -> "Task":
         return Task(self, fn, name)
 
     async def wrrrk_async(self, workers: int = 1):
@@ -210,10 +215,16 @@ class Task:
         #TODO we _could_ support a list of elements to get passed as a single arg each
         """
         argvs = [
-            (arg, {}) if isinstance(arg, list) else ((), arg) if isinstance(arg, dict) else arg
+            (arg, {})
+            if isinstance(arg, list)
+            else ((), arg)
+            if isinstance(arg, dict)
+            else arg
             for arg in args
         ]
-        return self.brrr.gather(*(self.to_lambda(*argv[0], **argv[1]) for argv in argvs))
+        return self.brrr.gather(
+            *(self.to_lambda(*argv[0], **argv[1]) for argv in argvs)
+        )
 
     def evaluate(self, argv):
         return self.fn(*argv[0], **argv[1])
@@ -224,6 +235,7 @@ class Task:
         """
         call = Call(self.name, (args, kwargs))
         return self.brrr._schedule_call(call)
+
 
 class Wrrrker:
     def __init__(self, brrr: Brrr):
@@ -329,7 +341,6 @@ class Wrrrker:
                 except QueueIsClosed:
                     logger.info("Queue is closed")
                     return
-
 
                 memo_key = message.body
                 self.resolve_call(memo_key)
