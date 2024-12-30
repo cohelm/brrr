@@ -53,16 +53,6 @@ class Brrr:
         self.memory = None
         self.worker_singleton = None
 
-    # TODO do we like the idea of brrr as a context manager?
-    def __enter__(self):
-        pass
-
-    def __exit__(self, exc_type, exc_value, traceback):
-        if hasattr(self.queue, "__exit__"):
-            self.queue.__exit__(exc_type, exc_value, traceback)
-        if hasattr(self.memory, "__exit__"):
-            self.memory.__exit__(exc_type, exc_value, traceback)
-
     # TODO Do we want to pass in a memstore/kv instead?
     def setup(self, queue: Queue, store: Store):
         # TODO throw if already instantiated?
