@@ -183,6 +183,7 @@
             src = lib.cleanSource ./.;
             buildPhase = ''
               ruff check
+              ruff format --check
             '';
             installPhase = ''
               touch $out
