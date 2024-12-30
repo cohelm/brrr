@@ -31,31 +31,38 @@ class QueueContract(ABC):
         queue = self.get_queue()
         messages = set(["message-1", "message-2", "message-3"])
 
-        if self.has_accurate_info: assert queue.get_info().num_messages == 0
+        if self.has_accurate_info:
+            assert queue.get_info().num_messages == 0
 
         queue.put("message-1")
-        if self.has_accurate_info: assert queue.get_info().num_messages == 1
+        if self.has_accurate_info:
+            assert queue.get_info().num_messages == 1
 
         queue.put("message-2")
-        if self.has_accurate_info: assert queue.get_info().num_messages == 2
+        if self.has_accurate_info:
+            assert queue.get_info().num_messages == 2
 
         queue.put("message-3")
-        if self.has_accurate_info: assert queue.get_info().num_messages == 3
+        if self.has_accurate_info:
+            assert queue.get_info().num_messages == 3
 
         message = queue.get_message()
         assert message.body in messages
         messages.remove(message.body)
-        if self.has_accurate_info: assert queue.get_info().num_messages == 2
+        if self.has_accurate_info:
+            assert queue.get_info().num_messages == 2
 
         message = queue.get_message()
         assert message.body in messages
         messages.remove(message.body)
-        if self.has_accurate_info: assert queue.get_info().num_messages == 1
+        if self.has_accurate_info:
+            assert queue.get_info().num_messages == 1
 
         message = queue.get_message()
         assert message.body in messages
         messages.remove(message.body)
-        if self.has_accurate_info: assert queue.get_info().num_messages == 0
+        if self.has_accurate_info:
+            assert queue.get_info().num_messages == 0
 
         with pytest.raises(QueueIsEmpty):
             queue.get_message()
@@ -80,4 +87,3 @@ class TestInMemoryQueue(QueueContract):
 
     def close_queue(self, queue):
         queue.closed = True
-

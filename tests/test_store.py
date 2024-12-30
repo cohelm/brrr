@@ -1,4 +1,4 @@
-from brrr.backends.in_memory import InMemoryByteStore, InMemoryQueue
+from brrr.backends.in_memory import InMemoryByteStore
 import pytest
 
 from abc import ABC, abstractmethod
