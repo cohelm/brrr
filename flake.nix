@@ -181,9 +181,8 @@
             name = "ruff";
             nativeBuildInputs = [ self'.packages.dev ];
             src = lib.cleanSource ./.;
-            # Don’t check tests for now though we should
             buildPhase = ''
-              ruff check src
+              ruff check
             '';
             installPhase = ''
               touch $out
