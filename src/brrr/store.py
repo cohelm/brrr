@@ -218,15 +218,6 @@ class Memory:
             else:
                 return
 
-    def set_pending_returns(
-        self, memo_key: str, updated_keys: set[str], existing_keys: set[str] | None
-    ):
-        updated_keys = ",".join(sorted(updated_keys))
-        existing_keys = ",".join(sorted(existing_keys))
-        self.pickles.compare_and_set(
-            MemKey("pending_returns", memo_key), updated_keys, existing_keys
-        )
-
     def delete_pending_returns(self, memo_key: str, existing_keys: set[str] | None):
         existing_keys = (
             None if existing_keys is None else ",".join(sorted(existing_keys))
