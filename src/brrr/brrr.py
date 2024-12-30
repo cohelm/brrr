@@ -1,8 +1,6 @@
 from typing import Any, Callable, Union
 
 import logging
-import asyncio
-import threading
 
 from .store import AlreadyExists, Call, CompareMismatch, Memory, Store, input_hash
 from .queue import Queue, QueueIsClosed, QueueIsEmpty
@@ -35,12 +33,6 @@ class Brrr:
     # worker
     worker_singleton: Union['Wrrrker', None]
 
-    # For threaded workers, each worker registers itself in this dict by thread id
-    worker_threads: dict[int, 'Wrrrker']
-
-    # For async workers,
-    worker_loops: dict[int, 'Wrrrker']
-
     # A storage backend for calls, values and pending returns
     memory: Memory | None
     # A queue of call keys to be processed
@@ -50,9 +42,6 @@ class Brrr:
     tasks = dict[str, 'Task']
 
     def __init__(self):
-        self.worker_singleton = None
-        self.worker_threads = {}
-        self.worker_loops = {}
         self.tasks = {}
         self.queue = None
         self.memory = None
@@ -73,20 +62,8 @@ class Brrr:
         self.queue = queue
         self.memory = Memory(store)
 
-    def are_we_inside_worker_context(self):
-        if self.worker_singleton:
-            return True
-        elif self.worker_threads:
-            # For synchronous workers, we can use a thread-local global variable
-            return threading.current_thread() in self.worker_threads
-        elif self.worker_loops:
-            try:
-                # For async workers, we can check the asyncio loop
-                return asyncio.get_running_loop() in self.worker_loops
-            except RuntimeError:
-                return False
-        else:
-            return False
+    def are_we_inside_worker_context(self) -> bool:
+        return self.worker_singleton
 
 
     @requires_setup
@@ -178,19 +155,13 @@ class Brrr:
         """
         Start a number of async worker loops
         """
-        await asyncio.gather(
-            *(Wrrrker(self).loop_async() for _ in range(workers))
-        )
+        await Wrrrker(self).loop_async()
 
-    def wrrrk(self, threads: int = 1):
+    def wrrrk(self):
         """
-        Spin up a number of worker threads
+        Spin up a single brrr worker.
         """
-        if threads == 1:
-            Wrrrker(self).loop()
-        else:
-            for _ in range(threads):
-                threading.Thread(target=Wrrrker(self).loop).start()
+        Wrrrker(self).loop()
 
 
 class Task:
@@ -347,7 +318,7 @@ class Wrrrker:
                 self.brrr.queue.delete_message(message.receipt_handle)
 
     async def loop_async(self):
-        with self:
+        async with self:
             logger.info("Worker Started")
             while True:
                 try:
@@ -364,18 +335,3 @@ class Wrrrker:
                 self.resolve_call(memo_key)
 
                 self.brrr.queue.delete_message(message.receipt_handle)
-
-
-class ThreadWrrrker(Wrrrker):
-    # The context manager maintains a thread-local global variable to indicate that the thread is a worker
-    # and that any invoked tasks can raise Defer exceptions
-    def __enter__(self):
-        tid = threading.current_thread()
-        if tid in self.brrr.worker_threads:
-            raise Exception("Worker already running in this thread")
-
-        self.brrr.worker_threads[tid] = self
-        return self
-
-    def __exit__(self, exc_type, exc_value, traceback):
-        del self.brrr.worker_threads[threading.current_thread()]
