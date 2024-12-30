@@ -123,56 +123,6 @@ redis.call('XDEL', stream, msg_id)
 """
 
 
-class RedisQueue(Queue):
-    """
-    Single-topic queue on Redis using LPOP and RPUSH
-    """
-
-    client: redis.Redis
-    key: str
-
-    def __init__(self, client: redis.Redis, key: str):
-        """
-        Bring your own sync Redis client.
-
-        The redis client must be initialized with `decode=True`.
-        """
-        self.client = client
-        self.key = key
-
-    def put(self, message: str):
-        self.client.rpush(self.key, message)
-
-    def get_message(self) -> Message:
-        # This is not an async client
-        ret = typing.cast(
-            list[Any], self.client.blpop([self.key], self.recv_block_secs)
-        )
-        if not ret:
-            raise QueueIsEmpty
-
-        if not len(ret) >= 2:
-            raise Exception(f"Unexpected length of return value from BLPOP: {len(ret)}")
-        return Message(ret[1], "")
-
-    def get_message_async(self):
-        # TODO: This is a blocking operation right now
-        return self.get_message()
-
-    def delete_message(self, receipt_handle: str):
-        pass
-
-    def set_message_timeout(self, receipt_handle: str):
-        pass
-
-    def get_info(self):
-        # TODO untested
-        return QueueInfo(
-            num_messages=self.client.llen(self.key),
-            num_inflight_messages=0,
-        )
-
-
 class RedisStream(RichQueue):
     client: redis.Redis
 
