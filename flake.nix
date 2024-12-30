@@ -64,6 +64,7 @@
           ];
           services = let
             demoEnv = {
+              AWS_DEFAULT_REGION = "us-east-1";
               AWS_ENDPOINT_URL = "http://localhost:8000";
               AWS_ACCESS_KEY_ID = "000000000000";
               AWS_SECRET_ACCESS_KEY = "fake";
