@@ -1,11 +1,9 @@
 from __future__ import annotations
 
-import time
+import asyncio
 import typing
-from typing import Any
 
-from ..queue import Message, Queue, QueueInfo, RichQueue, QueueIsEmpty
-from ..store import CompareMismatch, MemKey, Store
+from ..queue import Message, QueueInfo, RichQueue, QueueIsEmpty
 
 COMPARE_AND_SET_SCRIPT = """
 local key = KEYS[1]
@@ -36,7 +34,7 @@ end
 """
 
 if typing.TYPE_CHECKING:
-    import redis
+    from redis.asyncio import Redis
 
 # This script takes care of all of the queue semantics beyond at least once delivery
 # - Rate limiting
@@ -124,7 +122,7 @@ redis.call('XDEL', stream, msg_id)
 
 
 class RedisStream(RichQueue):
-    client: redis.Redis
+    client: Redis
 
     queue: str
     group = "workers"
@@ -138,17 +136,19 @@ class RedisStream(RichQueue):
     lib_name = "brrr"
     func_name = "dequeue"
 
-    def __init__(self, client: redis.Redis, queue: str):
+    def __init__(self, client: Redis, queue: str):
         self.client = client
         self.queue = queue
 
-    def clear(self):
-        self.client.delete(self.queue)
-        self.client.delete(self.queue + ":rate_limiters")
+    async def clear(self):
+        await self.client.delete(self.queue)
+        await self.client.delete(self.queue + ":rate_limiters")
 
-    def setup(self):
+    async def setup(self):
         try:
-            self.client.xgroup_create(self.queue, self.group, id="0", mkstream=True)
+            await self.client.xgroup_create(
+                self.queue, self.group, id="0", mkstream=True
+            )
         # Ideally we would want to catch ‘redis.exceptions.ResponseError’ here
         # instead, but currently the entire production part of the code is
         # dependency-free.  That works because the actual redis client is
@@ -160,11 +160,11 @@ class RedisStream(RichQueue):
             if "BUSYGROUP Consumer Group name already exists" not in str(e):
                 raise
 
-    def put(self, body: str):
+    async def put(self, body: str):
         # Messages can not be added to specific groups, so we just create a stream per topic
-        self.client.xadd(self.queue, {"body": body})
+        await self.client.xadd(self.queue, {"body": body})
 
-    def get_message(self) -> Message:
+    async def get_message(self) -> Message:
         keys = (self.queue,)
         argv = (
             self.group,
@@ -174,21 +174,17 @@ class RedisStream(RichQueue):
             self.max_concurrency,
             self.job_timeout_ms,
         )
-        response = self.client.eval(DEQUEUE_FUNCTION, len(keys), *keys, *argv)
+        response = await self.client.eval(DEQUEUE_FUNCTION, len(keys), *keys, *argv)
         if not response:
             # TODO: Do not wait indiscriminately but simulate blpop.  How do you
             # do that with a script?
-            time.sleep(1)
+            await asyncio.sleep(1)
             raise QueueIsEmpty
         body, receipt_handle = response[:2]
         return Message(body, receipt_handle)
 
-    def get_message_async(self):
-        # TODO: This is a blocking operation right now
-        return self.get_message()
-
     # TODO: This has a bug; xack does not remove the message from the stream
-    def delete_message(self, receipt_handle: str):
+    async def delete_message(self, receipt_handle: str):
         # The receipt handle here must match the message ID
         # self.client.xack(self.queue, self.group, receipt_handle)
         keys = (self.queue,)
@@ -196,12 +192,12 @@ class RedisStream(RichQueue):
             self.group,
             receipt_handle,
         )
-        self.client.eval(ACK_FUNCTION, len(keys), *keys, *argv)
+        await self.client.eval(ACK_FUNCTION, len(keys), *keys, *argv)
 
-    def set_message_timeout(self, receipt_handle: str, seconds: int):
+    async def set_message_timeout(self, receipt_handle: str, seconds: int):
         # The seconds don't do anything for now; I wasn't sure how to translate a fixed timeout to the Redis model
         # At least this resets the idle time @jkz
-        self.client.xclaim(
+        await self.client.xclaim(
             self.queue,
             self.group,
             self.consumer,
@@ -209,10 +205,10 @@ class RedisStream(RichQueue):
             message_ids=[receipt_handle],
         )
 
-    def get_info(self):
+    async def get_info(self):
         return QueueInfo(
-            num_messages=self.client.xlen(self.queue),
-            num_inflight_messages=self.client.xpending(self.queue, self.group)[
+            num_messages=await self.client.xlen(self.queue),
+            num_inflight_messages=(await self.client.xpending(self.queue, self.group))[
                 "pending"
             ],
         )

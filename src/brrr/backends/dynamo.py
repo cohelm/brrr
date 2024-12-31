@@ -5,7 +5,7 @@ import typing
 from ..store import CompareMismatch, MemKey, Store
 
 if typing.TYPE_CHECKING:
-    from mypy_boto3_dynamodb import DynamoDBClient
+    from types_aiobotocore_dynamodb import DynamoDBClient
 
 
 # The frame table layout is:
@@ -39,14 +39,14 @@ class DynamoDbMemStore(Store):
         self.client = client
         self.table_name = table_name
 
-    def __contains__(self, key: MemKey):
-        return "Item" in self.client.get_item(
+    async def has(self, key: MemKey):
+        return "Item" in await self.client.get_item(
             TableName=self.table_name,
             Key=self.key(key),
         )
 
-    def __getitem__(self, key: MemKey) -> bytes:
-        response = self.client.get_item(
+    async def get(self, key: MemKey) -> bytes:
+        response = await self.client.get_item(
             TableName=self.table_name,
             Key=self.key(key),
         )
@@ -54,18 +54,18 @@ class DynamoDbMemStore(Store):
             raise KeyError(key)
         return response["Item"]["value"]["B"]
 
-    def __setitem__(self, key: MemKey, value: bytes):
-        self.client.put_item(
+    async def set(self, key: MemKey, value: bytes):
+        await self.client.put_item(
             TableName=self.table_name, Item={**self.key(key), "value": {"B": value}}
         )
 
-    def __delitem__(self, key: MemKey):
-        self.client.delete_item(
+    async def delete(self, key: MemKey):
+        await self.client.delete_item(
             TableName=self.table_name,
             Key=self.key(key),
         )
 
-    def compare_and_set(self, key: MemKey, value: bytes, expected: bytes | None):
+    async def compare_and_set(self, key: MemKey, value: bytes, expected: bytes | None):
         ExpressionAttributeValues = {":value": {"B": value}}
         if expected is None:
             ConditionExpression = "attribute_not_exists(#value)"
@@ -74,7 +74,7 @@ class DynamoDbMemStore(Store):
             ConditionExpression = "#value = :expected"
 
         try:
-            self.client.update_item(
+            await self.client.update_item(
                 TableName=self.table_name,
                 Key=self.key(key),
                 UpdateExpression="SET #value = :value",
@@ -85,9 +85,9 @@ class DynamoDbMemStore(Store):
         except self.client.exceptions.ConditionalCheckFailedException:
             raise CompareMismatch
 
-    def compare_and_delete(self, key: MemKey, expected: bytes):
+    async def compare_and_delete(self, key: MemKey, expected: bytes):
         try:
-            self.client.delete_item(
+            await self.client.delete_item(
                 TableName=self.table_name,
                 Key=self.key(key),
                 ConditionExpression="attribute_exists(#value) AND #value = :expected",
@@ -98,9 +98,9 @@ class DynamoDbMemStore(Store):
         except self.client.exceptions.ConditionalCheckFailedException:
             raise CompareMismatch
 
-    def create_table(self):
+    async def create_table(self):
         try:
-            self.client.create_table(
+            await self.client.create_table(
                 TableName=self.table_name,
                 KeySchema=[
                     {"AttributeName": "pk", "KeyType": "HASH"},

@@ -1,7 +1,10 @@
+from abc import ABC, abstractmethod
+from contextlib import asynccontextmanager
+from typing import AsyncIterator
+
 import pytest
 
-from abc import ABC, abstractmethod
-from brrr.queue import Queue, QueueIsEmpty, QueueIsClosed
+from brrr.queue import Queue, QueueIsEmpty
 from brrr.backends.in_memory import InMemoryQueue
 
 
@@ -11,70 +14,57 @@ class QueueContract(ABC):
     deletes_messages: bool
 
     @abstractmethod
-    def get_queue(self) -> Queue:
+    @asynccontextmanager
+    async def with_queue(self) -> AsyncIterator[Queue]:
         """
-        This should return a fresh, empty queue instance
+        A context manager which calls test function f with a queue
         """
         ...
 
-    # TODO Move this to a mixin? This is pretty ugly.
-    #      One problem is that we have no control over clients, which usually do the closing
-    @abstractmethod
-    def close_queue(self): ...
+    async def test_queue_raises_empty(self):
+        async with self.with_queue() as queue:
+            with pytest.raises(QueueIsEmpty):
+                await queue.get_message()
 
-    def test_queue_raises_empty(self):
-        queue = self.get_queue()
-        with pytest.raises(QueueIsEmpty):
-            queue.get_message()
+    async def test_queue_enqueues(self):
+        async with self.with_queue() as queue:
+            messages = set(["message-1", "message-2", "message-3"])
 
-    def test_queue_enqueues(self):
-        queue = self.get_queue()
-        messages = set(["message-1", "message-2", "message-3"])
+            if self.has_accurate_info:
+                assert (await queue.get_info()).num_messages == 0
 
-        if self.has_accurate_info:
-            assert queue.get_info().num_messages == 0
+            await queue.put("message-1")
+            if self.has_accurate_info:
+                assert (await queue.get_info()).num_messages == 1
 
-        queue.put("message-1")
-        if self.has_accurate_info:
-            assert queue.get_info().num_messages == 1
+            await queue.put("message-2")
+            if self.has_accurate_info:
+                assert (await queue.get_info()).num_messages == 2
 
-        queue.put("message-2")
-        if self.has_accurate_info:
-            assert queue.get_info().num_messages == 2
+            await queue.put("message-3")
+            if self.has_accurate_info:
+                assert (await queue.get_info()).num_messages == 3
 
-        queue.put("message-3")
-        if self.has_accurate_info:
-            assert queue.get_info().num_messages == 3
+            message = await queue.get_message()
+            assert message.body in messages
+            messages.remove(message.body)
+            if self.has_accurate_info:
+                assert (await queue.get_info()).num_messages == 2
 
-        message = queue.get_message()
-        assert message.body in messages
-        messages.remove(message.body)
-        if self.has_accurate_info:
-            assert queue.get_info().num_messages == 2
+            message = await queue.get_message()
+            assert message.body in messages
+            messages.remove(message.body)
+            if self.has_accurate_info:
+                assert (await queue.get_info()).num_messages == 1
 
-        message = queue.get_message()
-        assert message.body in messages
-        messages.remove(message.body)
-        if self.has_accurate_info:
-            assert queue.get_info().num_messages == 1
+            message = await queue.get_message()
+            assert message.body in messages
+            messages.remove(message.body)
+            if self.has_accurate_info:
+                assert (await queue.get_info()).num_messages == 0
 
-        message = queue.get_message()
-        assert message.body in messages
-        messages.remove(message.body)
-        if self.has_accurate_info:
-            assert queue.get_info().num_messages == 0
-
-        with pytest.raises(QueueIsEmpty):
-            queue.get_message()
-
-    def test_closing(self):
-        if not self.throws_closes:
-            pytest.skip("Queue does not throw QueueIsClosed exceptions")
-        queue = self.get_queue()
-        queue.put("message-1")
-        self.close_queue(queue)
-        with pytest.raises(QueueIsClosed):
-            queue.get_message()
+            with pytest.raises(QueueIsEmpty):
+                await queue.get_message()
 
 
 class TestInMemoryQueue(QueueContract):
@@ -82,8 +72,6 @@ class TestInMemoryQueue(QueueContract):
     has_accurate_info = True
     deletes_messages = True
 
-    def get_queue(self) -> Queue:
-        return InMemoryQueue()
-
-    def close_queue(self, queue):
-        queue.closed = True
+    @asynccontextmanager
+    async def with_queue(self) -> AsyncIterator[Queue]:
+        yield InMemoryQueue()

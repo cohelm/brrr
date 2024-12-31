@@ -28,20 +28,20 @@ Highlights:
 from brrr import task
 
 @task
-def fib(n: int, salt=None):
+async def fib(n: int, salt=None):
     match n:
         case 0: return 0
         case 1: return 1
-        case _: return sum(fib.map([[n - 2, salt], [n - 1, salt]]))
+        case _: return sum(await fib.map([[n - 2, salt], [n - 1, salt]]))
 
 @task
-def fib_and_print(n: str):
-    f = fib(int(n))
+async def fib_and_print(n: str):
+    f = await fib(int(n))
     print(f"fib({n}) = {f}", flush=True)
     return f
 
 @task
-def hello(greetee: str):
+async def hello(greetee: str):
     greeting = f"Hello, {greetee}!"
     print(greeting, flush=True)
     return greeting
