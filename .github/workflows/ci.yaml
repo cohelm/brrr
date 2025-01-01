@@ -11,7 +11,7 @@ jobs:
       - name: "nocommit checker"
         uses: nobssoftware/nocommit@v2
 
-  check:
+  nix-flake-check:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout code
@@ -21,3 +21,14 @@ jobs:
       - name: Configure Nix cache
         uses: DeterminateSystems/magic-nix-cache-action@main
       - run: nix flake check
+
+  # Ensure nix flake show isn’t broken
+  nix-flake-show:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      - name: Install Nix
+        uses: DeterminateSystems/nix-installer-action@v9
+      # No need for a cache
+      - run: nix flake show
