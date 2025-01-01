@@ -61,30 +61,6 @@ local replenish_rate_per_second = tonumber(ARGV[4])
 local max_concurrency = tonumber(ARGV[5])
 local job_timeout_ms = tonumber(ARGV[6])
 
--- Before dequeueing, restore all stuck jobs to the stream
--- TODO do we want to set timeout per job?
--- Count of 100 is the default, presumably we want this to be 'inf'
---local stuck_jobs = redis.call('XAUTOCLAIM', stream, group, 'watchdog', job_timeout_ms, '0-0', 'COUNT', 100)
---for _, job in ipairs(stuck_jobs[2] or {}) do
-    ---- Add before removing to avoid race conditions
-    --redis.call('XADD', stream, '*', 'body', job[2][2])
-    --redis.call('SREM', rate_limiters, job[1])
---end
-
--- The PEL holds all currently active jobs, grabbed by a consumer that haven't been acked
--- If the PEL is full, we can't take any more jobs, we do need to make sure that
--- jobs don't get stuck in the PEL forever
---if (tonumber(redis.call('XPENDING', stream, group)[1]) or 0) >= max_concurrency then
-    --return nil
---end
-
--- Rate limits are implemented by adding each grabbed task to a set of rate limiters, with a TTL
--- Calculated by the rate limit pool capacity and the replenish rate
--- If the rate limiter set is full, we can't take any more jobs
---if (tonumber(redis.call('SCARD', rate_limiters)) or 0) >= rate_limit_pool_capacity then
-    --return nil
---end
-
 -- Grab one message from the stream
 local message = redis.call('XREADGROUP', 'GROUP', group, consumer, 'COUNT', 1, 'STREAMS', stream, '>')
 
@@ -105,7 +81,6 @@ if message and #message > 0 then
 end
 
 return nil
---end)
 """.strip()
 
 ACK_FUNCTION = """
