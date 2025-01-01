@@ -56,6 +56,7 @@ class Brrr:
         self.tasks = {}
         self.queue = None
         self.memory = None
+        self.worker_singleton = None
 
     # TODO do we like the idea of brrr as a context manager?
     def __enter__(self):
