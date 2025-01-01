@@ -3,6 +3,8 @@
 import asyncio
 from contextlib import asynccontextmanager
 from collections.abc import AsyncIterator
+import logging
+import logging.config
 import json
 import os
 from pprint import pprint
@@ -19,7 +21,9 @@ from brrr.backends.dynamo import DynamoDbMemStore
 import brrr
 from brrr import task
 
+logger = logging.getLogger(__name__)
 routes = web.RouteTableDef()
+
 
 def table_name() -> str:
     """
@@ -139,7 +143,7 @@ async def server():
         await runner.setup()
         site = web.TCPSite(runner, "localhost", 8080)
         await site.start()
-        print("Listening on http://localhost:8080")
+        logger.info("Listening on http://localhost:8080")
         await asyncio.Event().wait()
 
 def args2dict(args: Iterable[str]) -> dict[str, str]:
@@ -185,6 +189,12 @@ async def reset():
 
 
 async def amain():
+    # To log _all_ messages at DEBGUG level (very noisy)
+    # logging.basicConfig(level=logging.DEBUG)
+    logging.basicConfig()
+    logger.setLevel(logging.DEBUG)
+    # To log all brrr messages at DEBUG level (quite noisy)
+    # logging.getLogger('brrr').setLevel(logging.DEBUG)
     f = cmds.get(sys.argv[1]) if len(sys.argv) > 1 else None
     if f:
         await f(*sys.argv[2:])

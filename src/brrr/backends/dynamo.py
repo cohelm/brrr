@@ -1,11 +1,15 @@
 from __future__ import annotations
 
+import logging
 import typing
 
 from ..store import CompareMismatch, MemKey, Store
 
 if typing.TYPE_CHECKING:
     from types_aiobotocore_dynamodb import DynamoDBClient
+
+
+logger = logging.getLogger(__name__)
 
 
 # The frame table layout is:
@@ -51,7 +55,9 @@ class DynamoDbMemStore(Store):
             Key=self.key(key),
         )
         if "Item" not in response:
+            logger.debug(f"getting key: {key}: not found")
             raise KeyError(key)
+        logger.debug(f"getting key: {key}: found")
         return response["Item"]["value"]["B"]
 
     async def set(self, key: MemKey, value: bytes):

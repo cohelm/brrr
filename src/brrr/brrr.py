@@ -258,6 +258,13 @@ class Wrrrker:
         try:
             value = await self.brrr.evaluate(call)
         except Defer as defer:
+            logger.debug(
+                "Deferring %s %s %s: %d missing calls",
+                memo_key,
+                call.task_name,
+                call.argv,
+                len(defer.calls),
+            )
             for call in defer.calls:
                 await self.brrr._schedule_call(call, memo_key)
             return
@@ -310,7 +317,7 @@ class Wrrrker:
                     # This is presumed to be a long poll
                     message = await self.brrr.queue.get_message()
                 except QueueIsEmpty:
-                    logger.info("Queue is empty")
+                    logger.debug("Queue is empty")
                     continue
                 except QueueIsClosed:
                     logger.info("Queue is closed")

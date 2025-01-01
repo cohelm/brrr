@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import asyncio
+import logging
 import typing
 
 from ..queue import Message, QueueInfo, RichQueue, QueueIsEmpty
@@ -120,6 +121,8 @@ redis.call('XACK', stream, group, msg_id)
 redis.call('XDEL', stream, msg_id)
 """
 
+logger = logging.getLogger(__name__)
+
 
 class RedisStream(RichQueue):
     client: Redis
@@ -159,8 +162,13 @@ class RedisStream(RichQueue):
         except Exception as e:
             if "BUSYGROUP Consumer Group name already exists" not in str(e):
                 raise
+            logger.debug(f"Creating fresh queue {self.queue}: queue already existed")
+            return
+
+        logger.debug(f"Created fresh queue {self.queue}")
 
     async def put(self, body: str):
+        logger.debug(f"Putting new message on {self.queue}")
         # Messages can not be added to specific groups, so we just create a stream per topic
         await self.client.xadd(self.queue, {"body": body})
 
