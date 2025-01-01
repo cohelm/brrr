@@ -114,6 +114,7 @@
             inputs.services-flake.processComposeModules.default
             self.processComposeModules.default
           ];
+          cli.options.no-server = true;
           services.brrr-demo.server.enable = true;
           services.brrr-demo.worker.enable = true;
         };
@@ -122,6 +123,7 @@
             inputs.services-flake.processComposeModules.default
             self.processComposeModules.default
           ];
+          cli.options.no-server = true;
           services.brrr-demo.server.enable = false;
           services.brrr-demo.worker.enable = false;
         };
