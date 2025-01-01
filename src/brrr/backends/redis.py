@@ -149,13 +149,16 @@ class RedisStream(RichQueue):
 
     async def get_message(self) -> Message:
         keys = (self.queue,)
-        argv = (
-            self.group,
-            self.consumer,
-            self.rate_limit_pool_capacity,
-            self.replenish_rate_per_second,
-            self.max_concurrency,
-            self.job_timeout_ms,
+        argv = map(
+            str,
+            (
+                self.group,
+                self.consumer,
+                self.rate_limit_pool_capacity,
+                self.replenish_rate_per_second,
+                self.max_concurrency,
+                self.job_timeout_ms,
+            ),
         )
         response = await self.client.eval(DEQUEUE_FUNCTION, len(keys), *keys, *argv)
         if not response:
@@ -189,9 +192,9 @@ class RedisStream(RichQueue):
         )
 
     async def get_info(self):
+        total = await self.client.xlen(self.queue)
+        pending = await self.client.xpending(self.queue, self.group)
         return QueueInfo(
-            num_messages=await self.client.xlen(self.queue),
-            num_inflight_messages=(await self.client.xpending(self.queue, self.group))[
-                "pending"
-            ],
+            num_messages=total,
+            num_inflight_messages=pending["pending"],
         )
