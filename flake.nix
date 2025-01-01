@@ -234,6 +234,7 @@
               self'.packages.uv
               self'.packages.brrr-demo
               virtualenv
+              pkgs.redis # For the CLI
             ];
             commands = [
               # Always build aarch64-linux
