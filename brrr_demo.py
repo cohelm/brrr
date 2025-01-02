@@ -13,7 +13,7 @@ from typing import Iterable
 
 import aioboto3
 from aiohttp import web
-from redis.asyncio import Redis
+import redis.asyncio as redis
 from types_aiobotocore_dynamodb import DynamoDBClient
 
 from brrr.backends.redis import RedisStream
@@ -68,15 +68,33 @@ async def schedule_task(request: web.BaseRequest):
 
 
 @asynccontextmanager
-async def with_resources() -> AsyncIterator[tuple[Redis, DynamoDBClient]]:
-    session = aioboto3.Session()
-    async with session.client("dynamodb") as dync:
-        dync: DynamoDBClient
-        rc = Redis(decode_responses=True)
-        try:
+async def with_redis() -> AsyncIterator[redis.Redis]:
+    redurl = os.environ.get("BRRR_DEMO_REDIS_URL")
+    rkwargs = dict(
+        decode_responses=True,
+        health_check_interval=10,
+        socket_connect_timeout=5,
+        retry_on_timeout=True,
+        socket_keepalive=True,
+        protocol=3,
+    )
+    if redurl is None:
+        rc = redis.Redis(**rkwargs)
+    else:
+        rc = redis.from_url(redurl, **rkwargs)
+    await rc.ping()
+    try:
+        yield rc
+    finally:
+        await rc.aclose()
+
+
+@asynccontextmanager
+async def with_resources() -> AsyncIterator[tuple[redis.Redis, DynamoDBClient]]:
+    async with with_redis() as rc:
+        async with aioboto3.Session().client("dynamodb") as dync:
+            dync: DynamoDBClient
             yield (rc, dync)
-        finally:
-            await rc.aclose()
 
 
 @asynccontextmanager
@@ -136,15 +154,18 @@ async def worker():
 
 @cmd
 async def server():
+    bind_addr = os.environ.get("BRRR_DEMO_LISTEN_HOST", "127.0.0.1")
+    bind_port = int(os.environ.get("BRRR_DEMO_LISTEN_PORT", "8080"))
     async with with_brrr(True):
         app = web.Application()
         app.add_routes(routes)
         runner = web.AppRunner(app)
         await runner.setup()
-        site = web.TCPSite(runner, "localhost", 8080)
+        site = web.TCPSite(runner, bind_addr, bind_port)
         await site.start()
-        logger.info("Listening on http://localhost:8080")
+        logger.info(f"Listening on http://{bind_addr}:{bind_port}")
         await asyncio.Event().wait()
+
 
 def args2dict(args: Iterable[str]) -> dict[str, str]:
     """

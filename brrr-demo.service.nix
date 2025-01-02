@@ -17,24 +17,8 @@
 # Ok.
 
 { config, pkgs, name, lib, ... }: {
-  options = with lib.types; {
-    # You’ll want to override this unless you use an overlay
-    package = lib.mkPackageOption pkgs "brrr-demo" { };
-    args = lib.mkOption {
-      default = [];
-      type = listOf str;
-    };
-    environment = lib.mkOption {
-      type = types.attrsOf types.str;
-      default = { };
-      example = {
-        AWS_ENDPOINT_URL = "http://localhost:12345";
-      };
-      description = ''
-        Extra environment variables passed to the `brrr-demo` process.
-      '';
-    };
-  };
+  # services-flake requires setting the options top-level
+  options = import ./brrr-demo.options.nix { inherit lib pkgs; };
   config = {
     outputs.settings.processes.${name} = {
       environment = config.environment;

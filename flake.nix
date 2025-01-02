@@ -85,6 +85,10 @@
           };
         };
       };
+      # WIP, exporting is best effort.
+      nixosModules = {
+        brrr-demo = import ./brrr-demo.module.nix;
+      };
     };
     perSystem = { config, self', inputs', pkgs, lib, system, ... }: let
       uvWorkspace = inputs.uv2nix.lib.workspace.loadWorkspace {
@@ -189,6 +193,7 @@
               touch $out
             '';
           };
+          demoNixosTest = pkgs.callPackage ./brrr-demo.test.nix { inherit self; };
         };
         devshells = {
           impure = {
