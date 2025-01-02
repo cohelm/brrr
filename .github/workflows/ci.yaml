@@ -16,8 +16,10 @@ jobs:
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
-      - name: Install Nix
-        uses: DeterminateSystems/nix-installer-action@v9
+      - uses: cachix/install-nix-action@v30
+        with:
+          enable_kvm: true
+          extra_nix_config: "system-features = nixos-test benchmark big-parallel kvm"
       - name: Configure Nix cache
         uses: DeterminateSystems/magic-nix-cache-action@main
       - run: nix flake check
