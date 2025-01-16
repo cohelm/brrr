@@ -67,7 +67,6 @@ class Brrr:
     def are_we_inside_worker_context(self) -> Any:
         return self.worker_singleton
 
-    @requires_setup
     async def gather(self, *task_lambdas) -> Sequence[Any]:
         """
         Takes a number of task lambdas and calls each of them.
