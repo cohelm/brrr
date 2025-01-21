@@ -68,20 +68,28 @@ class Store[T](ABC):
     """
 
     @abstractmethod
-    async def has(self, key: MemKey) -> bool: ...
+    async def has(self, key: MemKey) -> bool:
+        raise NotImplementedError()
+
     @abstractmethod
-    async def get(self, key: MemKey) -> T: ...
+    async def get(self, key: MemKey) -> T:
+        raise NotImplementedError()
+
     @abstractmethod
-    async def set(self, key: MemKey, value: T): ...
+    async def set(self, key: MemKey, value: T):
+        raise NotImplementedError()
+
     @abstractmethod
-    async def delete(self, key: MemKey): ...
+    async def delete(self, key: MemKey):
+        raise NotImplementedError()
+
     @abstractmethod
     async def compare_and_set(self, key: MemKey, value: T, expected: T | None):
         """
         Only set the value, as a transaction, if the existing value matches the expected value
         Or, if expected value is None, if the key does not exist
         """
-        ...
+        raise NotImplementedError()
 
     @abstractmethod
     async def compare_and_delete(self, key: MemKey, expected: T):
@@ -91,7 +99,7 @@ class Store[T](ABC):
         to remind the author that they're trying to delete a key that they know doesn't exist,
         which sounds like a bug.
         """
-        ...
+        raise NotImplementedError()
 
 
 class PickleJar(Store[Any]):
