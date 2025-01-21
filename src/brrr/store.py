@@ -1,5 +1,5 @@
 from abc import ABC, abstractmethod
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from collections import namedtuple
 from typing import Any, TypeVar
 
@@ -18,14 +18,14 @@ def input_hash(*args):
 
 
 # Using the same memo key, we store the task and its argv here so we can retrieve them in workers
-@dataclass
+@dataclass(frozen=True)
 class Call:
     task_name: str
     argv: tuple[tuple, dict]
+    memo_key: str = field(init=False)
 
-    @property
-    def memo_key(self):
-        return input_hash(self.task_name, self.argv)
+    def __post_init__(self):
+        object.__setattr__(self, "memo_key", input_hash(self.task_name, self.argv))
 
     def __eq__(self, other):
         return isinstance(other, Call) and self.memo_key == other.memo_key
