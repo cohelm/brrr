@@ -202,7 +202,7 @@ class Memory:
         if any(not isinstance(k, str) for k in updated_keys):
             raise ValueError("add_pending_returns: all keys must be strings")
 
-        # TODO is there a number of retries we should throw for?
+        i = 0
         while True:
             try:
                 existing_keys = await self.get_pending_returns(memo_key)
@@ -222,7 +222,17 @@ class Memory:
                 await self.pickles.compare_and_set(
                     MemKey("pending_returns", memo_key), keys_to_set, keys_to_match
                 )
-            except CompareMismatch:
+            except CompareMismatch as e:
+                i += 1
+                if i > 100:
+                    # Very ad-hoc.  This should never be encountered, but let’s
+                    # at least set _some_ kind of error message here so someone
+                    # could debug this, if it ever happens.  It almost certainly
+                    # indicates an issue in the underlying store’s
+                    # compare_and_set implementation.
+                    raise Exception(
+                        f"exceeded CAS misses for pending returns on {memo_key}"
+                    ) from e
                 continue
             else:
                 return
