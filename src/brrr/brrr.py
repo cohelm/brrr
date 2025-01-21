@@ -3,7 +3,15 @@ from collections.abc import Awaitable, Callable, Sequence
 import logging
 from typing import Any, Union
 
-from .store import AlreadyExists, Call, CompareMismatch, Memory, Store, input_hash
+from .store import (
+    AlreadyExists,
+    Call,
+    CompareMismatch,
+    Memory,
+    Store,
+    PickleCodec,
+    input_hash,
+)
 from .queue import Queue, QueueIsClosed, QueueIsEmpty
 
 logger = logging.getLogger(__name__)
@@ -62,7 +70,7 @@ class Brrr:
     def setup(self, queue: Queue, store: Store):
         # TODO throw if already instantiated?
         self.queue = queue
-        self.memory = Memory(store)
+        self.memory = Memory(store, PickleCodec())
 
     def are_we_inside_worker_context(self) -> Any:
         return self.worker_singleton

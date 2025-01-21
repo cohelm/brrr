@@ -1,11 +1,14 @@
-from abc import ABC, abstractmethod
+from abc import abstractmethod, ABC
 from dataclasses import dataclass, field
 from collections import namedtuple
-from typing import Any, TypeVar
+from typing import Any, Protocol, TypeVar
 
 import pickle
 
 from hashlib import sha256
+
+
+Argv = tuple[tuple, dict]
 
 
 def input_hash(*args):
@@ -55,10 +58,11 @@ class AlreadyExists(Exception): ...
 
 
 T = TypeVar("T")
+X = TypeVar("X")
+Y = TypeVar("Y")
 
 
-# TODO: Use custom error rather than KeyError as part of contract.
-class Store[T](ABC):
+class Store(ABC):
     """
     A key-value store with a dict-like interface.
     This expresses the requirements for a store to be suitable as a Memory backend.
@@ -72,11 +76,11 @@ class Store[T](ABC):
         raise NotImplementedError()
 
     @abstractmethod
-    async def get(self, key: MemKey) -> T:
+    async def get(self, key: MemKey) -> bytes:
         raise NotImplementedError()
 
     @abstractmethod
-    async def set(self, key: MemKey, value: T):
+    async def set(self, key: MemKey, value: bytes):
         raise NotImplementedError()
 
     @abstractmethod
@@ -84,7 +88,7 @@ class Store[T](ABC):
         raise NotImplementedError()
 
     @abstractmethod
-    async def compare_and_set(self, key: MemKey, value: T, expected: T | None):
+    async def compare_and_set(self, key: MemKey, value: bytes, expected: bytes | None):
         """
         Only set the value, as a transaction, if the existing value matches the expected value
         Or, if expected value is None, if the key does not exist
@@ -92,92 +96,101 @@ class Store[T](ABC):
         raise NotImplementedError()
 
     @abstractmethod
-    async def compare_and_delete(self, key: MemKey, expected: T):
-        """
-        Only delete the value, as a transaction, if the existing value matches the expected value
-        This is a noop if the expected value is None. While we could allow it, we've chosen not to,
-        to remind the author that they're trying to delete a key that they know doesn't exist,
-        which sounds like a bug.
+    async def compare_and_delete(self, key: MemKey, expected: bytes):
+        """Delete the value, iff the current value equals the given expected value.
+
+        The expected value CANNOT be None.  If the expected value is None,
+        meaning there currently is no value, then don't call this function.
+
         """
         raise NotImplementedError()
 
 
-class PickleJar(Store[Any]):
+class Codec(ABC):
+    """Codec for values that pass around the brrr datastore.
+
+    If you want inter-language calling you'll need to ensure both languages
+    can compute this.
+
+    The serializations must be deterministic, whatever that means for you.
+    E.g. if you use dictionaries, make sure to order them before serializing.
+
+    For any serious use you want strict control over the types you accept here
+    and explicit serialization routines.
+
     """
-    A dict-like object that pickles on set and unpickles on get
+
+    # TODO: This API formalizes an agnostic codec like pickle, but we want to
+    # give real codecs more information about the original call so they don’t
+    # need to support arbitrary conversions.  Something like decode(type,
+    # payload), for example, or multiple separate methods.  Notably, the codec
+    # must support encoding some values generated internally by brrr (e.g.: an
+    # ascii string for the pending returns), while also supporting “whatever a
+    # task can return”.  We currently rely on the same encode/decode calls for
+    # both, and pass it custom internal dataclasses (Call, …), so effectively
+    # it’s locked in to pickle.  This can be untangled, starting with a better
+    # API.
+
+    @abstractmethod
+    def encode(self, val: Any) -> bytes:
+        raise NotImplementedError()
+
+    @abstractmethod
+    def decode(self, b: bytes) -> Any:
+        raise NotImplementedError()
+
+
+class PickleCodec:
+    """Very liberal codec, based on hopes and dreams.
+
+    Don't use this in production because you run the risk of non-deterministic
+    serialization, e.g. dicts with arbitrary order.
+
     """
 
-    pickles: Store[bytes]
+    def encode(self, val: Any) -> bytes:
+        return pickle.dumps(val)
 
-    def __init__(self, store: Store):
-        self.pickles = store
-
-    async def has(self, key: MemKey):
-        return await self.pickles.has(key)
-
-    async def get(self, key: MemKey):
-        return pickle.loads(await self.pickles.get(key))
-
-    async def set(self, key: MemKey, value):
-        await self.pickles.set(key, pickle.dumps(value))
-
-    async def delete(self, key: MemKey):
-        await self.pickles.delete(key)
-
-    # BEWARE `None` has special semantics here. None means "expect key to be missing"
-    # which means we never pickle the value `None`. TBD whether we want to support
-    # these semantics, or instead use a "Optional" value wrapper
-
-    # Throw CompareMismatch if the expected value does not match the actual value
-    async def compare_and_set(self, key: MemKey, value: Any, expected: Any | None):
-        assert value is not None, "Value cannot be None"
-        await self.pickles.compare_and_set(
-            key,
-            pickle.dumps(value),
-            None if expected is None else pickle.dumps(expected),
-        )
-
-    # Throw CompareMismatch if the expected value does not match the actual value
-    async def compare_and_delete(self, key: MemKey, expected: Any):
-        await self.pickles.compare_and_delete(
-            key, None if expected is None else pickle.dumps(expected)
-        )
+    def decode(self, b: bytes) -> Any:
+        return pickle.loads(b)
 
 
 class Memory:
     """
-    A memstore that uses a PickleJar as its backend
+    A memstore that uses a pickle jar as its backend
     """
 
-    def __init__(self, store: Store):
-        self.pickles = PickleJar(store)
+    def __init__(self, store: Store, codec: Codec):
+        self.store = store
+        self.codec = codec
 
     async def get_call(self, memo_key: str) -> Call:
-        val = await self.pickles.get(MemKey("call", memo_key))
+        val = self.codec.decode(await self.store.get(MemKey("call", memo_key)))
         assert isinstance(val, Call)
         return val
 
     async def has_call(self, call: Call):
-        return await self.pickles.has(MemKey("call", call.memo_key))
+        return await self.store.has(MemKey("call", call.memo_key))
 
     async def set_call(self, call: Call):
         if not isinstance(call, Call):
             raise ValueError(f"set_call expected a Call, got {call}")
-        await self.pickles.set(MemKey("call", call.memo_key), call)
+        await self.store.set(MemKey("call", call.memo_key), self.codec.encode(call))
 
     async def has_value(self, memo_key: str) -> bool:
-        return await self.pickles.has(MemKey("value", memo_key))
+        return await self.store.has(MemKey("value", memo_key))
 
     async def get_value(self, memo_key: str) -> Any:
-        return await self.pickles.get(MemKey("value", memo_key))
+        return self.codec.decode(await self.store.get(MemKey("value", memo_key)))
 
     async def set_value(self, memo_key: str, value: Any):
         if value is None:
             raise ValueError("set_value value cannot be None")
 
         # Only set if the value is not already set
+        enc = self.codec.encode(value)
         try:
-            await self.pickles.compare_and_set(MemKey("value", memo_key), value, None)
+            await self.store.compare_and_set(MemKey("value", memo_key), enc, None)
         except CompareMismatch:
             # Throwing over passing here; Because of idempotency, we only ever want
             # one value to be set for a given memo_key. If we silently ignored this here,
@@ -185,18 +198,26 @@ class Memory:
             raise AlreadyExists(f"set_value: value already set for {memo_key}")
 
     async def get_info(self, task_name: str) -> Info:
-        val = await self.pickles.get(MemKey("info", task_name))
+        val = self.codec.decode(await self.store.get(MemKey("info", task_name)))
         assert isinstance(val, Info)
         return val
 
     async def set_info(self, task_name: str, value: Info):
-        await self.pickles.set(MemKey("info", task_name), value)
+        await self.store.set(MemKey("info", task_name), self.codec.encode(value))
 
     async def get_pending_returns(self, memo_key: str) -> set[str]:
-        val = await self.pickles.get(MemKey("pending_returns", memo_key))
+        val = self.codec.decode(
+            await self.store.get(MemKey("pending_returns", memo_key))
+        )
         val = set(val.split(","))
         assert isinstance(val, set) and all(isinstance(x, str) for x in val)
         return val
+
+    def _encode_returns(self, returns: set[str]) -> bytes:
+        # TODO ehhh, used sets before, but they don't always hash to the same value.
+        # could use lists and keep them sorted and is a safe compare across implementations.
+        # This hack gets us to v1
+        return self.codec.encode(",".join(sorted(returns)))
 
     async def add_pending_returns(self, memo_key: str, updated_keys: set[str]):
         if any(not isinstance(k, str) for k in updated_keys):
@@ -208,18 +229,14 @@ class Memory:
                 existing_keys = await self.get_pending_returns(memo_key)
             except KeyError:
                 existing_keys = None
+                keys_to_match = None
             else:
                 updated_keys |= existing_keys
+                keys_to_match = self._encode_returns(existing_keys)
 
+            keys_to_set = self._encode_returns(updated_keys)
             try:
-                # TODO ehhh, used sets before, but they don't always hash to the same value.
-                # could use lists and keep them sorted and is a safe compare across implementations.
-                # This hack gets us to v1
-                keys_to_set = ",".join(sorted(updated_keys))
-                keys_to_match = (
-                    None if existing_keys is None else ",".join(sorted(existing_keys))
-                )
-                await self.pickles.compare_and_set(
+                await self.store.compare_and_set(
                     MemKey("pending_returns", memo_key), keys_to_set, keys_to_match
                 )
             except CompareMismatch as e:
@@ -242,7 +259,6 @@ class Memory:
             # Multiplexing ‘None’ as a missing value was a mistake to begin
             # with, let’s make sure it doesn’t bleed where it isn’t supposed to.
             raise ValueError("cannot CAS delete a missing value")
-        existing_keys = ",".join(sorted(existing_keys))
-        await self.pickles.compare_and_delete(
-            MemKey("pending_returns", memo_key), existing_keys
+        await self.store.compare_and_delete(
+            MemKey("pending_returns", memo_key), self._encode_returns(existing_keys)
         )

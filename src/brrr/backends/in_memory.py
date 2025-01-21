@@ -37,37 +37,37 @@ class InMemoryQueue(Queue):
 
 
 # Just to drive the point home
-class InMemoryByteStore(Store[bytes]):
+class InMemoryByteStore(Store):
     """
     A store that stores bytes
     """
 
-    store: dict
+    inner: dict
 
     def __init__(self):
-        self.store = {}
+        self.inner = {}
 
     async def has(self, key: str) -> bool:
-        return key in self.store
+        return key in self.inner
 
     async def get(self, key: str) -> bytes:
-        return self.store[key]
+        return self.inner[key]
 
     async def set(self, key: str, value: bytes):
-        self.store[key] = value
+        self.inner[key] = value
 
     async def delete(self, key: str):
         try:
-            del self.store[key]
+            del self.inner[key]
         except KeyError:
             pass
 
     async def compare_and_set(self, key: str, value: bytes, expected: bytes | None):
-        if expected is None and key in self.store or self.store.get(key) != expected:
+        if expected is None and key in self.inner or self.inner.get(key) != expected:
             raise CompareMismatch
-        self.store[key] = value
+        self.inner[key] = value
 
     async def compare_and_delete(self, key: str, expected: bytes | None):
-        if expected is None and key in self.store or self.store.get(key) != expected:
+        if expected is None and key in self.inner or self.inner.get(key) != expected:
             raise CompareMismatch
-        del self.store[key]
+        del self.inner[key]

@@ -2,16 +2,24 @@ from brrr.backends.in_memory import InMemoryByteStore
 import pytest
 
 from abc import ABC, abstractmethod
-from brrr.store import AlreadyExists, Call, CompareMismatch, Memory, Store, MemKey
+from brrr.store import (
+    AlreadyExists,
+    Call,
+    CompareMismatch,
+    Memory,
+    PickleCodec,
+    Store,
+    MemKey,
+)
 
 
 class ByteStoreContract(ABC):
     @abstractmethod
-    def get_store(self) -> Store[bytes]:
+    def get_store(self) -> Store:
         """
         This should return a fresh, empty store instance
         """
-        ...
+        raise NotImplementedError()
 
     async def test_has(self):
         store = self.get_store()
@@ -127,7 +135,7 @@ class ByteStoreContract(ABC):
 class TestMemory:
     def get_memory(self) -> Memory:
         store = InMemoryByteStore()
-        return Memory(store)
+        return Memory(store, PickleCodec())
 
     async def test_call(self):
         memory = self.get_memory()
@@ -183,5 +191,5 @@ class TestMemory:
 
 
 class TestInMemoryByteStore(ByteStoreContract):
-    def get_store(self) -> Store[bytes]:
+    def get_store(self) -> Store:
         return InMemoryByteStore()
