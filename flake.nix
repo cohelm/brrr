@@ -97,7 +97,7 @@
       uvOverlay = uvWorkspace.mkPyprojectOverlay {
         sourcePreference = "wheel";
       };
-      python = pkgs.python312;
+      python = pkgs.python313;
       pythonSet = (pkgs.callPackage inputs.pyproject-nix.build.packages {
         inherit python;
       }).overrideScope (
