@@ -72,6 +72,7 @@ class DynamoDbMemStore(Store):
         )
 
     async def compare_and_set(self, key: MemKey, value: bytes, expected: bytes | None):
+        """if expected is None this succeeds iff there is no existing value"""
         ExpressionAttributeValues = {":value": {"B": value}}
         if expected is None:
             ConditionExpression = "attribute_not_exists(#value)"
@@ -92,6 +93,8 @@ class DynamoDbMemStore(Store):
             raise CompareMismatch
 
     async def compare_and_delete(self, key: MemKey, expected: bytes):
+        if expected is None:
+            raise ValueError("dynamo cannot CAS delete a missing value")
         try:
             await self.client.delete_item(
                 TableName=self.table_name,

@@ -237,12 +237,12 @@ class Memory:
             else:
                 return
 
-    async def delete_pending_returns(
-        self, memo_key: str, existing_keys: set[str] | None
-    ):
-        existing_keys = (
-            None if existing_keys is None else ",".join(sorted(existing_keys))
-        )
+    async def delete_pending_returns(self, memo_key: str, existing_keys: set[str]):
+        if existing_keys is None:
+            # Multiplexing ‘None’ as a missing value was a mistake to begin
+            # with, let’s make sure it doesn’t bleed where it isn’t supposed to.
+            raise ValueError("cannot CAS delete a missing value")
+        existing_keys = ",".join(sorted(existing_keys))
         await self.pickles.compare_and_delete(
             MemKey("pending_returns", memo_key), existing_keys
         )
