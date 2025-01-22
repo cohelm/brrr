@@ -1,18 +1,18 @@
 from abc import abstractmethod, ABC
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from collections import namedtuple
-from typing import Any, Protocol, TypeVar
+from typing import Any, TypeVar
 
 import pickle
 
 from hashlib import sha256
 
 
+# Very much WIP: this is the most generic “everything goes” Python way of
+# dealing with arguments, but we should either lock this down, or allow the user
+# of the library to define this.  Leaving this generic while we figure out the
+# actual usage pattern.
 Argv = tuple[tuple, dict]
-
-
-def input_hash(*args):
-    return sha256(":".join(map(str, args)).encode()).hexdigest()
 
 
 # Objects to be stored
@@ -24,11 +24,8 @@ def input_hash(*args):
 @dataclass(frozen=True)
 class Call:
     task_name: str
-    argv: tuple[tuple, dict]
-    memo_key: str = field(init=False)
-
-    def __post_init__(self):
-        object.__setattr__(self, "memo_key", input_hash(self.task_name, self.argv))
+    argv: Argv
+    memo_key: str
 
     def __eq__(self, other):
         return isinstance(other, Call) and self.memo_key == other.memo_key
@@ -139,8 +136,25 @@ class Codec(ABC):
     def decode(self, b: bytes) -> Any:
         raise NotImplementedError()
 
+    @abstractmethod
+    def hash_call(self, task_name: str, argv: Argv) -> str:
+        """Compute the memo_key for a Call.
 
-class PickleCodec:
+        The output of this function is required for actually _creating_ a Call
+        instance.  It's not the cleanest API (you could imagine e.g. a property
+        getter on the Call instance) but it does make something very explicit: a
+        Call instance is only relevant in the context of a Codec.  This
+        dependency is crucial: codecs are the only interface between a store and
+        this specific bit of code interacting with it.  Particularly with
+        multiple languages it is important that all serialization and
+        deserialization is done through the Codec, and computing a memkey from
+        the Call description is part of that.
+
+        """
+        raise NotImplementedError()
+
+
+class PickleCodec(Codec):
     """Very liberal codec, based on hopes and dreams.
 
     Don't use this in production because you run the risk of non-deterministic
@@ -154,6 +168,9 @@ class PickleCodec:
     def decode(self, b: bytes) -> Any:
         return pickle.loads(b)
 
+    def hash_call(self, task_name: str, argv: Argv) -> str:
+        return sha256(":".join(map(str, argv)).encode()).hexdigest()
+
 
 class Memory:
     """
@@ -163,6 +180,18 @@ class Memory:
     def __init__(self, store: Store, codec: Codec):
         self.store = store
         self.codec = codec
+
+    # This method feels slightly like the plumbing sticking out through the
+    # floor but it’s a step in the right direction.  At least it is explicit
+    # that Calls only make sense in the context of both a store *and* a codec.
+    # This is essential for cross-language functionality.
+    def make_call(self, task_name: str, argv: Argv) -> Call:
+        """Create a Call instance.
+
+        Defined on the memory because it is inherently tied to the codec.
+
+        """
+        return Call(task_name, argv, self.codec.hash_call(task_name, argv))
 
     async def get_call(self, memo_key: str) -> Call:
         val = self.codec.decode(await self.store.get(MemKey("call", memo_key)))

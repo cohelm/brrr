@@ -10,7 +10,6 @@ from .store import (
     Memory,
     Store,
     PickleCodec,
-    input_hash,
 )
 from .queue import Queue, QueueIsClosed, QueueIsEmpty
 
@@ -70,7 +69,8 @@ class Brrr:
     def setup(self, queue: Queue, store: Store):
         # TODO throw if already instantiated?
         self.queue = queue
-        self.memory = Memory(store, PickleCodec())
+        self._codec = PickleCodec()
+        self.memory = Memory(store, self._codec)
 
     def are_we_inside_worker_context(self) -> Any:
         return self.worker_singleton
@@ -98,6 +98,7 @@ class Brrr:
 
         return values
 
+    @requires_setup
     async def schedule(self, task_name: str, args: tuple, kwargs: dict):
         """Public-facing one-shot schedule method.
 
@@ -107,7 +108,9 @@ class Brrr:
         Don't use this internally.
 
         """
-        return await self._schedule_call(Call(task_name, (args, kwargs)))
+        return await self._schedule_call(
+            self.memory.make_call(task_name, (args, kwargs))
+        )
 
     @requires_setup
     async def _schedule_call(self, call: Call, parent_key=None):
@@ -137,7 +140,7 @@ class Brrr:
         """
         Returns the value of a task, or raises a KeyError if it's not present in the store
         """
-        memo_key = Call(task_name, (args, kwargs)).memo_key
+        memo_key = self.memory.make_call(task_name, (args, kwargs)).memo_key
         return await self.memory.get_value(memo_key)
 
     @requires_setup
@@ -189,11 +192,11 @@ class Task:
         argv = (args, kwargs)
         if not self.brrr.are_we_inside_worker_context():
             return await self.evaluate(argv)
-        memo_key = input_hash(self.name, argv)
+        call = self.brrr.memory.make_call(self.name, argv)
         try:
-            return await self.brrr.memory.get_value(memo_key)
+            return await self.brrr.memory.get_value(call.memo_key)
         except KeyError:
-            raise Defer([Call(self.name, argv)])
+            raise Defer([call])
 
     def to_lambda(self, *args, **kwargs):
         """
@@ -233,7 +236,7 @@ class Task:
         """
         This puts the task call on the queue, but doesn't return the result!
         """
-        call = Call(self.name, (args, kwargs))
+        call = self.brrr.memory.make_call(self.name, (args, kwargs))
         return await self.brrr._schedule_call(call)
 
 

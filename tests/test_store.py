@@ -4,7 +4,6 @@ import pytest
 from abc import ABC, abstractmethod
 from brrr.store import (
     AlreadyExists,
-    Call,
     CompareMismatch,
     Memory,
     PickleCodec,
@@ -146,7 +145,7 @@ class TestMemory:
         with pytest.raises(KeyError):
             await memory.get_call("non-existent")
 
-        call = Call("task", (("arg-1", "arg-2"), {"a": 1, "b": 2}))
+        call = memory.make_call("task", (("arg-1", "arg-2"), {"a": 1, "b": 2}))
         assert not await memory.has_call(call)
 
         await memory.set_call(call)
