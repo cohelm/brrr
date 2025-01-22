@@ -110,23 +110,25 @@ class Brrr:
         Don't use this internally.
 
         """
-        return await self._schedule_call(
+        return await self._schedule_call_root(
             self.memory.make_call(task_name, (args, kwargs))
         )
 
     @requires_setup
-    async def _schedule_call(self, call: Call, parent_key=None):
+    async def _schedule_call_nested(self, call: Call, parent_key: str):
         """Schedule this call on the brrr workforce.
 
         This is the real internal entrypoint which should be used by all brrr
         internal-facing code, to avoid confusion about what's internal API and
         what's external.
 
+        This method is for calls which are scheduled from within another brrr
+        call, i.e. when this call completes it must kick off the parent.
+
         """
         # Value has been computed already, return straight to the parent (if there is one)
         if await self.memory.has_value(call.memo_key):
-            if parent_key is not None:
-                await self.queue.put(parent_key)
+            await self.queue.put(parent_key)
             return
 
         # If this call has previously been scheduled, don't reschedule it.  This
@@ -136,8 +138,28 @@ class Brrr:
             await self.memory.set_call(call)
             await self.queue.put(call.memo_key)
 
-        if parent_key is not None:
-            await self.memory.add_pending_returns(call.memo_key, set([parent_key]))
+        await self.memory.add_pending_returns(call.memo_key, set([parent_key]))
+
+    @requires_setup
+    async def _schedule_call_root(self, call: Call):
+        """Schedule this call on the brrr workforce.
+
+        This is the real internal entrypoint which should be used by all brrr
+        internal-facing code, to avoid confusion about what's internal API and
+        what's external.
+
+        This method should be called for top-level workflow calls only.
+
+        """
+        if await self.memory.has_value(call.memo_key):
+            return
+
+        # If this call has previously been scheduled, don't reschedule it.  This
+        # is sensitive to a race condition but the worst case is that the same
+        # call gets scheduled multiple times; that’s ok.
+        if not await self.memory.has_call(call):
+            await self.memory.set_call(call)
+            await self.queue.put(call.memo_key)
 
     @requires_setup
     async def read(self, task_name: str, args: tuple, kwargs: dict):
@@ -279,7 +301,7 @@ class Wrrrker:
                 len(defer.calls),
             )
             for call in defer.calls:
-                await self.brrr._schedule_call(call, memo_key)
+                await self.brrr._schedule_call_nested(call, memo_key)
             return
 
         # We can end up in a race against another worker to write the value.
