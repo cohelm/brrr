@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import asyncio
 from collections.abc import Awaitable, Callable, Sequence
 import logging
@@ -49,7 +51,7 @@ class Brrr:
     # local global variable to indicate that it is a worker thread, which, for
     # tasks, means that their Defer raises will be caught and handled by the
     # worker
-    worker_singleton: Union["Wrrrker", None]
+    worker_singleton: Union[Wrrrker, None]
 
     # A storage backend for calls, values and pending returns
     memory: Memory | None
@@ -57,7 +59,7 @@ class Brrr:
     queue: Queue | None
 
     # Dictionary of task_name to task instance
-    tasks = dict[str, "Task"]
+    tasks: dict[str, Task]
 
     def __init__(self):
         self.tasks = {}
@@ -151,14 +153,14 @@ class Brrr:
         task = self.tasks[call.task_name]
         return await task.evaluate(call.argv)
 
-    def register_task(self, fn: AsyncFunc, name: str = None) -> "Task":
+    def register_task(self, fn: AsyncFunc, name: str = None) -> Task:
         task = Task(self, fn, name)
         if task.name in self.tasks:
             raise Exception(f"Task {task.name} already exists")
         self.tasks[task.name] = task
         return task
 
-    def task(self, fn: AsyncFunc, name: str = None) -> "Task":
+    def task(self, fn: AsyncFunc, name: str = None) -> Task:
         return Task(self, fn, name)
 
     async def wrrrk(self):
