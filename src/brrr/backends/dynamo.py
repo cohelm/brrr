@@ -71,23 +71,34 @@ class DynamoDbMemStore(Store):
             Key=self.key(key),
         )
 
-    async def compare_and_set(self, key: MemKey, value: bytes, expected: bytes | None):
-        """if expected is None this succeeds iff there is no existing value"""
-        ExpressionAttributeValues = {":value": {"B": value}}
-        if expected is None:
-            ConditionExpression = "attribute_not_exists(#value)"
-        else:
-            ExpressionAttributeValues[":expected"] = {"B": expected}
-            ConditionExpression = "#value = :expected"
-
+    async def set_new_value(self, key: MemKey, value: bytes):
+        """Set a value, ensuring none was previously set"""
         try:
             await self.client.update_item(
                 TableName=self.table_name,
                 Key=self.key(key),
                 UpdateExpression="SET #value = :value",
                 ExpressionAttributeNames={"#value": "value"},
-                ExpressionAttributeValues=ExpressionAttributeValues,
-                ConditionExpression=ConditionExpression,
+                ExpressionAttributeValues={":value": {"B": value}},
+                ConditionExpression="attribute_not_exists(#value)",
+            )
+        except self.client.exceptions.ConditionalCheckFailedException:
+            raise CompareMismatch
+
+    async def compare_and_set(self, key: MemKey, value: bytes, expected: bytes):
+        if expected is None:
+            raise ValueError("dynamo cannot CAS a missing value")
+        try:
+            await self.client.update_item(
+                TableName=self.table_name,
+                Key=self.key(key),
+                UpdateExpression="SET #value = :value",
+                ExpressionAttributeNames={"#value": "value"},
+                ExpressionAttributeValues={
+                    ":value": {"B": value},
+                    ":expected": {"B": expected},
+                },
+                ConditionExpression="#value = :expected",
             )
         except self.client.exceptions.ConditionalCheckFailedException:
             raise CompareMismatch

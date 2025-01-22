@@ -1,6 +1,7 @@
 from abc import abstractmethod, ABC
-from dataclasses import dataclass
 from collections import namedtuple
+from dataclasses import dataclass
+import functools
 from typing import Any, TypeVar
 
 import pickle
@@ -85,7 +86,12 @@ class Store(ABC):
         raise NotImplementedError()
 
     @abstractmethod
-    async def compare_and_set(self, key: MemKey, value: bytes, expected: bytes | None):
+    async def set_new_value(self, key: MemKey, value: bytes):
+        """Set a fresh value, throwing if any value already exists."""
+        raise NotImplementedError()
+
+    @abstractmethod
+    async def compare_and_set(self, key: MemKey, value: bytes, expected: bytes):
         """
         Only set the value, as a transaction, if the existing value matches the expected value
         Or, if expected value is None, if the key does not exist
@@ -219,7 +225,7 @@ class Memory:
         # Only set if the value is not already set
         enc = self.codec.encode(value)
         try:
-            await self.store.compare_and_set(MemKey("value", memo_key), enc, None)
+            await self.store.set_new_value(MemKey("value", memo_key), enc)
         except CompareMismatch:
             # Throwing over passing here; Because of idempotency, we only ever want
             # one value to be set for a given memo_key. If we silently ignored this here,
@@ -254,20 +260,22 @@ class Memory:
 
         i = 0
         while True:
+            memkey = MemKey("pending_returns", memo_key)
             try:
                 existing_keys = await self.get_pending_returns(memo_key)
             except KeyError:
-                existing_keys = None
-                keys_to_match = None
+                val = self._encode_returns(updated_keys)
+                f = functools.partial(self.store.set_new_value, memkey, val)
             else:
                 updated_keys |= existing_keys
+                val = self._encode_returns(updated_keys)
                 keys_to_match = self._encode_returns(existing_keys)
-
-            keys_to_set = self._encode_returns(updated_keys)
-            try:
-                await self.store.compare_and_set(
-                    MemKey("pending_returns", memo_key), keys_to_set, keys_to_match
+                f = functools.partial(
+                    self.store.compare_and_set, memkey, val, keys_to_match
                 )
+
+            try:
+                await f()
             except CompareMismatch as e:
                 i += 1
                 if i > 100:

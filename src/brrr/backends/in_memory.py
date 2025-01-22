@@ -62,8 +62,13 @@ class InMemoryByteStore(Store):
         except KeyError:
             pass
 
-    async def compare_and_set(self, key: str, value: bytes, expected: bytes | None):
-        if expected is None and key in self.inner or self.inner.get(key) != expected:
+    async def set_new_value(self, key: str, value: bytes):
+        if key in self.inner:
+            raise CompareMismatch
+        self.inner[key] = value
+
+    async def compare_and_set(self, key: str, value: bytes, expected: bytes):
+        if (key not in self.inner) or (self.inner[key] != expected):
             raise CompareMismatch
         self.inner[key] = value
 

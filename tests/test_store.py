@@ -99,6 +99,22 @@ class ByteStoreContract(ABC):
         with pytest.raises(KeyError):
             await store.get(a1)
 
+    async def test_set_new_value(self):
+        store = self.get_store()
+
+        a1 = MemKey("type-a", "id-1")
+
+        await store.set_new_value(a1, b"value-1")
+
+        assert await store.get(a1) == b"value-1"
+
+        with pytest.raises(CompareMismatch):
+            await store.set_new_value(a1, b"value-2")
+
+        await store.set(a1, b"value-2")
+
+        assert await store.get(a1) == b"value-2"
+
     async def test_compare_and_set(self):
         store = self.get_store()
 
@@ -117,6 +133,9 @@ class ByteStoreContract(ABC):
         store = self.get_store()
 
         a1 = MemKey("type-a", "id-1")
+
+        with pytest.raises(CompareMismatch):
+            await store.compare_and_delete(a1, b"value-2")
 
         await store.set(a1, b"value-1")
 
