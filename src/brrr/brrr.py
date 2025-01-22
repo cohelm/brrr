@@ -129,7 +129,9 @@ class Brrr:
                 await self.queue.put(parent_key)
             return
 
-        # If this call has previously been scheduled, don't reschedule it
+        # If this call has previously been scheduled, don't reschedule it.  This
+        # is sensitive to a race condition but the worst case is that the same
+        # call gets scheduled multiple times; that’s ok.
         if not await self.memory.has_call(call):
             await self.memory.set_call(call)
             await self.queue.put(call.memo_key)
