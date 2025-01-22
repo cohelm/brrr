@@ -238,8 +238,7 @@ class Task:
         """
         This puts the task call on the queue, but doesn't return the result!
         """
-        call = self.brrr.memory.make_call(self.name, (args, kwargs))
-        return await self.brrr._schedule_call(call)
+        return await self.brrr.schedule(self.name, args, kwargs)
 
 
 class Wrrrker:
