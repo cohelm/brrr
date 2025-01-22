@@ -8,7 +8,6 @@ from typing import Any, Union
 from .store import (
     AlreadyExists,
     Call,
-    CompareMismatch,
     Memory,
     Store,
     PickleCodec,
@@ -131,17 +130,20 @@ class Brrr:
         already exists for this call.
 
         """
-        # If this call has previously been scheduled, don't reschedule it.  This
-        # is sensitive to a race condition but the worst case is that the same
-        # call gets scheduled multiple times; that’s ok.
-        if not await self.memory.has_call(call):
-            await self.memory.set_call(call)
+        # First the call because it is perennial, it just describes the actual
+        # call being made, it doesn’t cause any further action and it’s safe
+        # under all races.
+        await self.memory.set_call(call)
+        # Note this can be immediately read out by a racing return call. The
+        # pathological case is: we are late to a party and another worker is
+        # actually just done handling this call, and just before it reads out
+        # the addresses to which to return, it is added here.  That’s still OK
+        # because it will then immediately call this parent flow back, which is
+        # fine because the result does in fact exist.
+        if not await self.memory.add_pending_return(call.memo_key, parent_key):
+            # Even in the previous race scenario this is safe because it just
+            # leads to extra, duplicate, ignored work.
             await self.queue.put(call.memo_key)
-
-        # Is this a race condition?? What if a call was scheduled during above
-        # if block, but by the time we get here it has completed and all its
-        # pending returns have resolved?
-        await self.memory.add_pending_returns(call.memo_key, set([parent_key]))
 
     @requires_setup
     async def _schedule_call_root(self, call: Call):
@@ -154,10 +156,15 @@ class Brrr:
         This method should be called for top-level workflow calls only.
 
         """
-
         # If this call has previously been scheduled, don't reschedule it.  This
         # is sensitive to a race condition but the worst case is that the same
         # call gets scheduled multiple times; that’s ok.
+        #
+        # TODO: this should probably be removed in favor of checking for an
+        # existing return value instead, at which point that’s probably the
+        # responsibility of calling code, i.e. this check should just be
+        # removed.  Otherwise it could be hard to force a recalculation of a
+        # call without a return value.
         if not await self.memory.has_call(call):
             await self.memory.set_call(call)
             await self.queue.put(call.memo_key)
@@ -310,35 +317,15 @@ class Wrrrker:
         try:
             await self.brrr.memory.set_value(call.memo_key, value)
         except AlreadyExists:
-            # It is possible that we can formally prove that this situation means we don't need to
-            # requeue here. Until then, let's just feel safer and run through any pending parents below.
+            # It is possible that we can formally prove that this situation
+            # means we don't need to requeue here. Until then, let's just feel
+            # safer and run through any pending parents below.
             pass
 
-        # Now we need to make sure that we enqueue all the parents.
-        # We keep some local state here while we try to compare-and-delete our way out
-        # Due to idempotency, the failure mode is fine here, since we only ever delete
-        # the pending return list after all of themn have been enqueued
-        # For a particularly hot job, it is possible that this gets "stuck" enqueuing
-        # new parents over and over. That is mostly a problem because it could cause
-        # the pending return list to grow out of bounds.
-
-        # TODO This try except jungle needs work. Not sure who wants to throw and who wants to return None
-
-        handled_returns = set()
-        try:
-            all_returns = await self.brrr.memory.get_pending_returns(call.memo_key)
-        except KeyError:
-            return
-
-        for memo_key in all_returns - handled_returns:
-            await self.brrr.queue.put(memo_key)
-
-        try:
-            await self.brrr.memory.delete_pending_returns(call.memo_key, all_returns)
-        except CompareMismatch:
-            # TODO tried to loop here but the dynamo CAS wasn't working. Perhaps revisit at some point
-            # Not required though as the root level task will eventually clean this up
-            pass
+        async with self.brrr.memory.with_pending_returns_remove(
+            call.memo_key
+        ) as returns:
+            await asyncio.gather(*map(self.brrr.queue.put, returns))
 
     async def loop(self):
         """

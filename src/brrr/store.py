@@ -1,7 +1,8 @@
 from abc import abstractmethod, ABC
+from collections.abc import AsyncIterator
 from collections import namedtuple
+from contextlib import asynccontextmanager
 from dataclasses import dataclass
-import functools
 from typing import Any, TypeVar
 
 import pickle
@@ -240,62 +241,97 @@ class Memory:
     async def set_info(self, task_name: str, value: Info):
         await self.store.set(MemKey("info", task_name), self.codec.encode(value))
 
-    async def get_pending_returns(self, memo_key: str) -> set[str]:
-        val = self.codec.decode(
-            await self.store.get(MemKey("pending_returns", memo_key))
-        )
-        val = set(val.split(","))
-        assert isinstance(val, set) and all(isinstance(x, str) for x in val)
-        return val
-
     def _encode_returns(self, returns: set[str]) -> bytes:
         # TODO ehhh, used sets before, but they don't always hash to the same value.
         # could use lists and keep them sorted and is a safe compare across implementations.
         # This hack gets us to v1
         return self.codec.encode(",".join(sorted(returns)))
 
-    async def add_pending_returns(self, memo_key: str, updated_keys: set[str]):
-        if any(not isinstance(k, str) for k in updated_keys):
-            raise ValueError("add_pending_returns: all keys must be strings")
+    def _decode_returns(self, enc: bytes) -> set[str]:
+        return set(self.codec.decode(enc).split(","))
 
+    @asynccontextmanager
+    async def _with_cas(self) -> AsyncIterator:
+        """Wrap a CAS exception generating body.
+
+        This abstracts the retry nature of a CAS gated operation.  The with
+        block will be retried as long as it keeps throwing CompareMismatch
+        exceptions.  Once it completes without throwing that, this with block
+        will exit.  The retries are capped at a hard-coded 100, after which a
+        generic error is returned (don't reach that, I guess).
+
+        """
         i = 0
         while True:
-            memkey = MemKey("pending_returns", memo_key)
             try:
-                existing_keys = await self.get_pending_returns(memo_key)
-            except KeyError:
-                val = self._encode_returns(updated_keys)
-                f = functools.partial(self.store.set_new_value, memkey, val)
-            else:
-                updated_keys |= existing_keys
-                val = self._encode_returns(updated_keys)
-                keys_to_match = self._encode_returns(existing_keys)
-                f = functools.partial(
-                    self.store.compare_and_set, memkey, val, keys_to_match
-                )
-
-            try:
-                await f()
+                yield
             except CompareMismatch as e:
                 i += 1
+                # Do this within the catch so we can attach the last
+                # CompareMismatch exception to the new exception.
                 if i > 100:
                     # Very ad-hoc.  This should never be encountered, but let’s
                     # at least set _some_ kind of error message here so someone
                     # could debug this, if it ever happens.  It almost certainly
                     # indicates an issue in the underlying store’s
                     # compare_and_set implementation.
-                    raise Exception(
-                        f"exceeded CAS misses for pending returns on {memo_key}"
-                    ) from e
+                    raise Exception("exceeded CAS retry limit") from e
                 continue
             else:
                 return
 
-    async def delete_pending_returns(self, memo_key: str, existing_keys: set[str]):
-        if existing_keys is None:
-            # Multiplexing ‘None’ as a missing value was a mistake to begin
-            # with, let’s make sure it doesn’t bleed where it isn’t supposed to.
-            raise ValueError("cannot CAS delete a missing value")
-        await self.store.compare_and_delete(
-            MemKey("pending_returns", memo_key), self._encode_returns(existing_keys)
-        )
+    async def add_pending_return(self, memo_key: str, new_return: str) -> bool:
+        """Register a pending return address for a call.
+
+        Note this is inherently racy: as soon as this call completes, another
+        worker could swoop in and immediately read the pending returns for this
+        call and clear them.  You can't trust that the new return is ever
+        visible to the thread that writes it--you can only trust that it is
+        visible to _some_ worker.
+
+        Return value indicates whether or not a call (any call) was already
+        pending, even if it was this very same call, or any other call.  This
+        can be used as an indication that an operation is currently `in flight.'
+
+        """
+        # Beware race conditions here!  Be aware of concurrency corner cases on
+        # every single line.
+        async with self._with_cas():
+            memkey = MemKey("pending_returns", memo_key)
+            try:
+                existing_enc = await self.store.get(memkey)
+            except KeyError:
+                val = self._encode_returns({new_return})
+                await self.store.set_new_value(memkey, val)
+                return False
+            else:
+                existing = self._decode_returns(existing_enc)
+                if new_return not in existing:
+                    updated_keys = existing | {new_return}
+                    val = self._encode_returns(updated_keys)
+                    await self.store.compare_and_set(memkey, val, existing_enc)
+                return True
+
+    @asynccontextmanager
+    async def with_pending_returns_remove(
+        self, memo_key: str
+    ) -> AsyncIterator[set[str]]:
+        """ """
+        memkey = MemKey("pending_returns", memo_key)
+        handled = set()
+        async with self._with_cas():
+            try:
+                pending_enc = await self.store.get(memkey)
+            except KeyError:
+                # No pending returns means we were raced by a concurrent
+                # execution of the same call with the same parent.
+                # Unfortunately because of how Python context managers work, we
+                # must yield _something_.  Yuck.
+                #
+                # https://stackoverflow.com/a/34519857
+                yield set()
+                return
+            to_handle = self._decode_returns(pending_enc) - handled
+            yield to_handle
+            handled |= to_handle
+            await self.store.compare_and_delete(memkey, pending_enc)

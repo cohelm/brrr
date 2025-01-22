@@ -12,6 +12,10 @@ from brrr.store import (
 )
 
 
+class FakeError(Exception):
+    pass
+
+
 class ByteStoreContract(ABC):
     @abstractmethod
     def get_store(self) -> Store:
@@ -186,26 +190,23 @@ class TestMemory:
     async def test_pending_returns(self):
         memory = self.get_memory()
 
-        with pytest.raises(KeyError):
-            assert not await memory.get_pending_returns("key")
+        async with memory.with_pending_returns_remove("key") as keys:
+            assert keys == set()
 
-        with pytest.raises(ValueError):
-            await memory.add_pending_returns("key", {123})
+        await memory.add_pending_return("key", "p1")
+        await memory.add_pending_return("key", "p2")
+        await memory.add_pending_return("key", "p2")
 
-        await memory.add_pending_returns("key", {"a", "b"})
+        with pytest.raises(FakeError):
+            async with memory.with_pending_returns_remove("key") as keys:
+                assert keys == {"p1", "p2"}
+                raise FakeError()
 
-        assert await memory.get_pending_returns("key") == {"a", "b"}
+        async with memory.with_pending_returns_remove("key") as keys:
+            assert keys == {"p1", "p2"}
 
-        await memory.add_pending_returns("key", {"c", "d"})
-        assert await memory.get_pending_returns("key") == {"a", "b", "c", "d"}
-
-        with pytest.raises(CompareMismatch):
-            await memory.delete_pending_returns("key", {"a", "b", "c", "d", "wrong"})
-        assert await memory.get_pending_returns("key") == {"a", "b", "c", "d"}
-
-        await memory.delete_pending_returns("key", {"a", "b", "c", "d"})
-        with pytest.raises(KeyError):
-            assert not await memory.get_pending_returns("key")
+        async with memory.with_pending_returns_remove("key") as keys:
+            assert keys == set()
 
 
 class TestInMemoryByteStore(ByteStoreContract):
