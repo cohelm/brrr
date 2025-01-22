@@ -67,7 +67,7 @@ class InMemoryByteStore(Store):
             raise CompareMismatch
         self.inner[key] = value
 
-    async def compare_and_delete(self, key: str, expected: bytes | None):
-        if expected is None and key in self.inner or self.inner.get(key) != expected:
+    async def compare_and_delete(self, key: str, expected: bytes):
+        if (key not in self.inner) or (self.inner[key] != expected):
             raise CompareMismatch
         del self.inner[key]
