@@ -110,9 +110,11 @@ class Brrr:
         Don't use this internally.
 
         """
-        return await self._schedule_call_root(
-            self.memory.make_call(task_name, (args, kwargs))
-        )
+        call = self.memory.make_call(task_name, (args, kwargs))
+        if await self.memory.has_value(call.memo_key):
+            return
+
+        return await self._schedule_call_root(call)
 
     @requires_setup
     async def _schedule_call_nested(self, call: Call, parent_key: str):
@@ -125,12 +127,10 @@ class Brrr:
         This method is for calls which are scheduled from within another brrr
         call, i.e. when this call completes it must kick off the parent.
 
-        """
-        # Value has been computed already, return straight to the parent (if there is one)
-        if await self.memory.has_value(call.memo_key):
-            await self.queue.put(parent_key)
-            return
+        This will always kick off the call, it doesn't check if a return value
+        already exists for this call.
 
+        """
         # If this call has previously been scheduled, don't reschedule it.  This
         # is sensitive to a race condition but the worst case is that the same
         # call gets scheduled multiple times; that’s ok.
@@ -138,6 +138,9 @@ class Brrr:
             await self.memory.set_call(call)
             await self.queue.put(call.memo_key)
 
+        # Is this a race condition?? What if a call was scheduled during above
+        # if block, but by the time we get here it has completed and all its
+        # pending returns have resolved?
         await self.memory.add_pending_returns(call.memo_key, set([parent_key]))
 
     @requires_setup
@@ -151,8 +154,6 @@ class Brrr:
         This method should be called for top-level workflow calls only.
 
         """
-        if await self.memory.has_value(call.memo_key):
-            return
 
         # If this call has previously been scheduled, don't reschedule it.  This
         # is sensitive to a race condition but the worst case is that the same
