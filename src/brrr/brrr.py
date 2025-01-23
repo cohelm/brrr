@@ -156,18 +156,8 @@ class Brrr:
         This method should be called for top-level workflow calls only.
 
         """
-        # If this call has previously been scheduled, don't reschedule it.  This
-        # is sensitive to a race condition but the worst case is that the same
-        # call gets scheduled multiple times; that’s ok.
-        #
-        # TODO: this should probably be removed in favor of checking for an
-        # existing return value instead, at which point that’s probably the
-        # responsibility of calling code, i.e. this check should just be
-        # removed.  Otherwise it could be hard to force a recalculation of a
-        # call without a return value.
-        if not await self.memory.has_call(call):
-            await self.memory.set_call(call)
-            await self.queue.put(call.memo_key)
+        await self.memory.set_call(call)
+        await self.queue.put(call.memo_key)
 
     @requires_setup
     async def read(self, task_name: str, args: tuple, kwargs: dict):
