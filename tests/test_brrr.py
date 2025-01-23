@@ -98,3 +98,25 @@ async def test_stop_when_empty():
     await queue.join()
     assert calls_pre == Counter({0: 1, 1: 2, 2: 2, 3: 2})
     assert calls_post == Counter({1: 1, 2: 1, 3: 1})
+
+
+async def test_debounce():
+    b = Brrr()
+    calls = Counter()
+    queue = ClosableInMemQueue()
+
+    @b.register_task
+    async def foo(a: int) -> int:
+        calls[a] += 1
+        if a == 0:
+            return a
+
+        ret = sum(await foo.map([[a - 1]] * 50))
+        if a == 3:
+            queue.close()
+        return ret
+
+    b.setup(queue, InMemoryByteStore())
+    await asyncio.gather(b.wrrrk(), b.schedule("foo", (3,), {}))
+    await queue.join()
+    assert calls == Counter({0: 1, 1: 2, 2: 2, 3: 2})
