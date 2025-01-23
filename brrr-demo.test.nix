@@ -85,7 +85,7 @@ pkgs.testers.runNixOSTest {
       # 😂
       text = ''
         eval "$(curl --fail -sSL "http://server:8080/hello?greetee=Jim" | jq '. == {status: "ok", result: "Hello, Jim!"}')"
-        eval "$(curl --fail -sSL "http://server:8080/fib_and_print?n=6&salt=abcd" | jq '. == {status: "ok", result: 8}')"
+        eval "$(curl --fail -sSL "http://server:8080/fib_and_print?n=6&salt=abcd" | jq '. == {status: "ok", result: 354224848179261915075}')"
       '';
     };
   in {
@@ -99,6 +99,7 @@ pkgs.testers.runNixOSTest {
 
   globalTimeout = 2 * 60;
 
+  # Chose a big number (100) to ensure debouncing works.
   testScript = ''
     # Start first because it's a dependency
     datastores.wait_for_unit("default.target")
@@ -108,7 +109,7 @@ pkgs.testers.runNixOSTest {
     tester.wait_for_unit("default.target")
     server.wait_for_open_port(8080)
     tester.wait_until_succeeds("curl --fail -sSL -X POST 'http://server:8080/hello?greetee=Jim'")
-    tester.wait_until_succeeds("curl --fail -sSL -X POST 'http://server:8080/fib_and_print?n=6&salt=abcd'")
+    tester.wait_until_succeeds("curl --fail -sSL -X POST 'http://server:8080/fib_and_print?n=100&salt=abcd'")
     tester.wait_until_succeeds("test-brrr-demo")
   '';
 }
