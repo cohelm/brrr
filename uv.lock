@@ -166,6 +166,7 @@ dev = [
     { name = "pyright" },
     { name = "pytest" },
     { name = "pytest-asyncio" },
+    { name = "pytest-timeout" },
     { name = "redis" },
     { name = "ruff" },
     { name = "types-aioboto3", extra = ["essential"] },
@@ -180,6 +181,7 @@ dev = [
     { name = "pyright", specifier = ">=1.1.389" },
     { name = "pytest", specifier = ">=8.3.4" },
     { name = "pytest-asyncio", specifier = ">=0.25.0" },
+    { name = "pytest-timeout", specifier = ">=2.3.1" },
     { name = "redis", specifier = ">=5.2.0" },
     { name = "ruff", specifier = ">=0.8.1" },
     { name = "types-aioboto3", extras = ["essential"], specifier = ">=13.3.0.post1" },
@@ -359,6 +361,18 @@ dependencies = [
 sdist = { url = "https://files.pythonhosted.org/packages/94/18/82fcb4ee47d66d99f6cd1efc0b11b2a25029f303c599a5afda7c1bca4254/pytest_asyncio-0.25.0.tar.gz", hash = "sha256:8c0610303c9e0442a5db8604505fc0f545456ba1528824842b37b4a626cbf609", size = 53298 }
 wheels = [
     { url = "https://files.pythonhosted.org/packages/88/56/2ee0cab25c11d4e38738a2a98c645a8f002e2ecf7b5ed774c70d53b92bb1/pytest_asyncio-0.25.0-py3-none-any.whl", hash = "sha256:db5432d18eac6b7e28b46dcd9b69921b55c3b1086e85febfe04e70b18d9e81b3", size = 19245 },
+]
+
+[[package]]
+name = "pytest-timeout"
+version = "2.3.1"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "pytest" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/93/0d/04719abc7a4bdb3a7a1f968f24b0f5253d698c9cc94975330e9d3145befb/pytest-timeout-2.3.1.tar.gz", hash = "sha256:12397729125c6ecbdaca01035b9e5239d4db97352320af155b3f5de1ba5165d9", size = 17697 }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/03/27/14af9ef8321f5edc7527e47def2a21d8118c6f329a9342cc61387a0c0599/pytest_timeout-2.3.1-py3-none-any.whl", hash = "sha256:68188cb703edfc6a18fad98dc25a3c61e9f24d644b0b70f33af545219fc7813e", size = 14148 },
 ]
 
 [[package]]
