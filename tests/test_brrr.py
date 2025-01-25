@@ -120,3 +120,56 @@ async def test_debounce():
     await asyncio.gather(b.wrrrk(), b.schedule("foo", (3,), {}))
     await queue.join()
     assert calls == Counter({0: 1, 1: 2, 2: 2, 3: 2})
+
+
+async def test_wrrrk_recoverable():
+    b = Brrr()
+    queue = ClosableInMemQueue()
+    store = InMemoryByteStore()
+    calls = Counter()
+
+    class MyError(Exception):
+        pass
+
+    @b.register_task
+    async def foo(a: int) -> int:
+        calls[f"foo({a})"] += 1
+        if a == 0:
+            raise MyError()
+        return await foo(a - 1)
+
+    @b.register_task
+    async def bar(a: int) -> int:
+        calls[f"bar({a})"] += 1
+        if a == 0:
+            return 0
+        ret = await bar(a - 1)
+        if a == 2:
+            queue.close()
+        return ret
+
+    b.setup(queue, store)
+    my_error_encountered = False
+    await b.schedule("foo", (2,), {})
+    try:
+        await b.wrrrk()
+    except MyError:
+        my_error_encountered = True
+    assert my_error_encountered
+
+    # Trick the test queue implementation to survive this
+    queue.received = asyncio.Queue()
+    queue.handling = {}
+    await b.schedule("bar", (2,), {})
+    await b.wrrrk()
+
+    assert calls == Counter(
+        {
+            "foo(0)": 1,
+            "foo(1)": 1,
+            "foo(2)": 1,
+            "bar(0)": 1,
+            "bar(1)": 2,
+            "bar(2)": 2,
+        }
+    )

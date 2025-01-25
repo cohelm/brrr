@@ -3,11 +3,9 @@ from collections.abc import AsyncIterator
 from collections import namedtuple
 from contextlib import asynccontextmanager
 from dataclasses import dataclass
-from typing import Any, TypeVar
-
+import hashlib
 import pickle
-
-from hashlib import sha256
+from typing import Any, TypeVar
 
 
 # Very much WIP: this is the most generic “everything goes” Python way of
@@ -176,7 +174,9 @@ class PickleCodec(Codec):
         return pickle.loads(b)
 
     def hash_call(self, task_name: str, argv: Argv) -> str:
-        return sha256(":".join(map(str, argv)).encode()).hexdigest()
+        h = hashlib.new("sha256")
+        h.update(repr([task_name, argv[0], list(sorted(argv[1].items()))]).encode())
+        return h.hexdigest()
 
 
 class Memory:

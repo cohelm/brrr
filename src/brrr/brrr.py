@@ -143,6 +143,7 @@ class Brrr:
         if not await self.memory.add_pending_return(call.memo_key, parent_key):
             # Even in the previous race scenario this is safe because it just
             # leads to extra, duplicate, ignored work.
+            logger.debug(f"Queuing deferred child of {parent_key}: {repr(call)}")
             await self.queue.put(call.memo_key)
 
     @requires_setup
@@ -329,6 +330,7 @@ class Wrrrker:
                 try:
                     # This is presumed to be a long poll
                     message = await self.brrr.queue.get_message()
+                    logger.debug(f"Got message {repr(message)}")
                 except QueueIsEmpty:
                     logger.debug("Queue is empty")
                     continue
