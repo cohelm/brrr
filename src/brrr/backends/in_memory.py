@@ -13,6 +13,9 @@ class InMemoryQueue(Queue):
     messages = collections.deque()
     closed = False
 
+    def __init__(self):
+        self.i = 0
+
     async def put(self, body: str):
         self.messages.append(body)
 
@@ -21,7 +24,8 @@ class InMemoryQueue(Queue):
             raise QueueIsClosed
         if not self.messages:
             raise QueueIsEmpty
-        return Message(self.messages.popleft(), "")
+        self.i += 1
+        return Message(self.messages.popleft(), str(self.i))
 
     async def delete_message(self, receipt_handle: str):
         pass

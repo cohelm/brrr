@@ -17,6 +17,9 @@ class Message:
     body: str
     receipt_handle: str
 
+    def __post_init__(self):
+        assert self.receipt_handle
+
 
 @dataclass
 class QueueInfo:
