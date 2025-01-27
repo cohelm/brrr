@@ -167,7 +167,7 @@ class MemoryContract(ByteStoreContract):
             with pytest.raises(KeyError):
                 await memory.get_call("non-existent")
 
-            call = memory.make_call("task", (("arg-1", "arg-2"), {"a": 1, "b": 2}))
+            call = memory.make_call("task", ("arg-1", "arg-2"), {"a": 1, "b": 2})
             assert not await memory.has_call(call)
 
             await memory.set_call(call)
@@ -176,14 +176,15 @@ class MemoryContract(ByteStoreContract):
 
     async def test_value(self):
         async with self.with_memory() as memory:
-            assert not await memory.has_value("key")
+            call = memory.make_call("task", (), {})
+            assert not await memory.has_value(call)
 
-            await memory.set_value("key", {"test": 1})
-            assert await memory.has_value("key")
-            assert await memory.get_value("key") == {"test": 1}
+            await memory.set_value(call, {"test": 1})
+            assert await memory.has_value(call)
+            assert await memory.get_value(call) == {"test": 1}
 
             with pytest.raises(AlreadyExists):
-                await memory.set_value("key", {"test": 2})
+                await memory.set_value(call, {"test": 2})
 
     async def test_pending_returns(self):
         async with self.with_memory() as memory:

@@ -133,8 +133,8 @@ class Brrr:
         Don't use this internally.
 
         """
-        call = self.memory.make_call(task_name, (args, kwargs))
-        if await self.memory.has_value(call.memo_key):
+        call = self.memory.make_call(task_name, args, kwargs)
+        if await self.memory.has_value(call):
             return
 
         return await self._schedule_call_root(call)
@@ -204,8 +204,8 @@ class Brrr:
         """
         Returns the value of a task, or raises a KeyError if it's not present in the store
         """
-        memo_key = self.memory.make_call(task_name, (args, kwargs)).memo_key
-        return await self.memory.get_value(memo_key)
+        call = self.memory.make_call(task_name, args, kwargs)
+        return await self.memory.get_value(call)
 
     @requires_setup
     async def evaluate(self, call: Call) -> Any:
@@ -213,7 +213,7 @@ class Brrr:
         Evaluate a frame, which means calling the tasks function with its arguments
         """
         task = self.tasks[call.task_name]
-        return await task.evaluate(call.argv)
+        return await task.evaluate(call.args, call.kwargs)
 
     def register_task(self, fn: AsyncFunc, name: str = None) -> Task:
         task = Task(self, fn, name)
@@ -253,12 +253,11 @@ class Task:
     # Calling a function returns the value if it has already been computed.
     # Otherwise, it raises a Call exception to schedule the computation
     async def __call__(self, *args, **kwargs):
-        argv = (args, kwargs)
         if not self.brrr.are_we_inside_worker_context():
-            return await self.evaluate(argv)
-        call = self.brrr.memory.make_call(self.name, argv)
+            return await self.evaluate(args, kwargs)
+        call = self.brrr.memory.make_call(self.name, args, kwargs)
         try:
-            return await self.brrr.memory.get_value(call.memo_key)
+            return await self.brrr.memory.get_value(call)
         except KeyError:
             raise Defer([call])
 
@@ -293,8 +292,8 @@ class Task:
     # could do without either, but there are so many gotchas around it and
     # possible points of failure that it’s nice to at least ensure this _is_ a
     # coroutine.
-    async def evaluate(self, argv):
-        return await self.fn(*argv[0], **argv[1])
+    async def evaluate(self, args, kwargs):
+        return await self.fn(*args, **kwargs)
 
     async def schedule(self, *args, **kwargs):
         """
@@ -359,14 +358,11 @@ class Wrrrker:
 
         logger.info("Resolved %s %s", my_call_id, me)
 
-        # We can end up in a race against another worker to write the value.
-        # We only accept the first entry and the rest will be bounced
+        # We can end up in a race against another worker to write the value.  We
+        # only accept the first entry and the rest will be ignored.
         try:
-            await self.brrr.memory.set_value(me.memo_key, value)
+            await self.brrr.memory.set_value(me, value)
         except AlreadyExists:
-            # It is possible that we can formally prove that this situation
-            # means we don't need to requeue here. Until then, let's just feel
-            # safer and run through any pending parents below.
             pass
 
         # This is ugly and it’s tempting to use asyncio.gather with
