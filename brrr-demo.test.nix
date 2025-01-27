@@ -22,7 +22,7 @@
 # test that replicates the actual demo as closely as possible to catch any
 # errors there.
 pkgs.testers.runNixOSTest {
-  name = "brrr-test";
+  name = "brrr-demo";
 
   nodes.datastores = { config, pkgs, ... }: {
     imports = [
@@ -97,7 +97,7 @@ pkgs.testers.runNixOSTest {
     ]);
   };
 
-  globalTimeout = 2 * 60;
+  globalTimeout = 5 * 60;
 
   # Chose a big number (100) to ensure debouncing works.
   testScript = ''

@@ -193,6 +193,7 @@
               touch $out
             '';
           };
+          pytestIntegration = pkgs.callPackage ./brrr-integration.test.nix { inherit self; };
           demoNixosTest = pkgs.callPackage ./brrr-demo.test.nix { inherit self; };
         };
         devshells = {
