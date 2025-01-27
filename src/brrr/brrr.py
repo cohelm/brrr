@@ -293,10 +293,9 @@ class Wrrrker:
             value = await self.brrr.evaluate(call)
         except Defer as defer:
             logger.debug(
-                "Deferring %s %s %s: %d missing calls",
+                "Deferring %s %s: %d missing calls",
                 memo_key,
-                call.task_name,
-                call.argv,
+                call,
                 len(defer.calls),
             )
             for call in defer.calls:

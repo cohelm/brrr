@@ -30,6 +30,11 @@ class Call:
     def __eq__(self, other):
         return isinstance(other, Call) and self.memo_key == other.memo_key
 
+    def __str__(self):
+        args = [repr(x) for x in self.argv[0]]
+        kwargs = ["=".join(x) for x in self.argv[1].items()]
+        return f"Call({self.task_name}({", ".join(args + kwargs)}))"
+
 
 @dataclass
 class Info:
