@@ -323,14 +323,6 @@ class Memory:
             # we could end up executing code with the wrong value
             raise AlreadyExists(f"set_value: value already set for {memo_key}")
 
-    async def get_info(self, task_name: str) -> Info:
-        val = self.codec.decode(await self.store.get(MemKey("info", task_name)))
-        assert isinstance(val, Info)
-        return val
-
-    async def set_info(self, task_name: str, value: Info):
-        await self.store.set(MemKey("info", task_name), self.codec.encode(value))
-
     @asynccontextmanager
     async def _with_cas(self) -> AsyncIterator:
         """Wrap a CAS exception generating body.
