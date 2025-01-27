@@ -20,12 +20,27 @@
 pkgs.testers.runNixOSTest {
   name = "brrr-integration";
 
+  nodes.datastores = { config, pkgs, ... }: {
+    imports = [
+      ./dynamodb.module.nix
+    ];
+    services.dynamodb = {
+      enable = true;
+      openFirewall = true;
+    };
+  };
   nodes.tester = { lib, config, pkgs, ... }: let
     test-brrr = pkgs.writeShellApplication {
       name = "test-brrr";
       runtimeInputs = [
         self.packages.${pkgs.system}.dev
       ];
+      runtimeEnv = {
+        AWS_DEFAULT_REGION = "fake";
+        AWS_ENDPOINT_URL = "http://datastores:8000";
+        AWS_ACCESS_KEY_ID = "fake";
+        AWS_SECRET_ACCESS_KEY = "fake";
+      };
       text = ''
         pytest ${self}
       '';
@@ -39,6 +54,7 @@ pkgs.testers.runNixOSTest {
   globalTimeout = 5 * 60;
 
   testScript = ''
+    datastores.wait_for_unit("default.target")
     tester.wait_for_unit("default.target")
     tester.wait_until_succeeds("test-brrr")
   '';

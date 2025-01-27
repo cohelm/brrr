@@ -170,12 +170,12 @@
           };
         };
         checks = {
-          pytest = pkgs.stdenvNoCC.mkDerivation {
+          pytestUnit = pkgs.stdenvNoCC.mkDerivation {
             name = "pytest";
             nativeBuildInputs = [ self'.packages.dev ];
             src = lib.cleanSource ./.;
             buildPhase = ''
-              pytest
+              pytest -m "not dependencies"
             '';
             installPhase = ''
               touch $out
@@ -243,6 +243,29 @@
               pkgs.redis # For the CLI
             ];
             commands = [
+              {
+                name = "brrr-test-unit";
+                category = "test";
+                help = "Tests which don't need dependencies";
+                command = "pytest -m 'not dependencies'";
+              }
+              {
+                name = "brrr-test-all";
+                category = "test";
+                help = "Tests including dependencies, make sure to run brrr-demo-deps";
+                # Lol
+                command = ''(
+                  : "''${AWS_DEFAULT_REGION=fake}"
+                  export AWS_DEFAULT_REGION
+                  : "''${AWS_ENDPOINT_URL=http://localhost:8000}"
+                  export AWS_ENDPOINT_URL
+                  : "''${AWS_ACCESS_KEY_ID=fake}"
+                  export AWS_ACCESS_KEY_ID
+                  : "''${AWS_SECRET_ACCESS_KEY=fake}"
+                  export AWS_SECRET_ACCESS_KEY
+                  exec pytest
+                )'';
+              }
               # Always build aarch64-linux
               {
                 name = "brrr-build-docker";

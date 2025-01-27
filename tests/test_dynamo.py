@@ -3,6 +3,7 @@ from typing import AsyncIterator
 import uuid
 
 import aioboto3
+import pytest
 
 from brrr.backends.dynamo import DynamoDbMemStore
 from brrr.store import Store
@@ -10,6 +11,7 @@ from brrr.store import Store
 from .store_contract import MemoryContract
 
 
+@pytest.mark.dependencies
 class TestDynamoByteStore(MemoryContract):
     @asynccontextmanager
     async def with_store(self) -> AsyncIterator[Store]:
