@@ -22,7 +22,7 @@ jobs:
           extra_nix_config: "system-features = nixos-test benchmark big-parallel kvm"
       - name: Configure Nix cache
         uses: DeterminateSystems/magic-nix-cache-action@main
-      - run: nix flake check -L
+      - run: nix flake check -L --keep-going
 
   # Ensure nix flake show isn’t broken
   nix-flake-show:
