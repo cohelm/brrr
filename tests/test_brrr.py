@@ -100,7 +100,7 @@ async def test_stop_when_empty():
     assert calls_post == Counter({1: 1, 2: 1, 3: 1})
 
 
-async def test_debounce():
+async def test_debounce_child():
     b = Brrr()
     calls = Counter()
     queue = ClosableInMemQueue()
@@ -120,6 +120,35 @@ async def test_debounce():
     await asyncio.gather(b.wrrrk(), b.schedule("foo", (3,), {}))
     await queue.join()
     assert calls == Counter({0: 1, 1: 2, 2: 2, 3: 2})
+
+
+# This formalizes an anti-feature: we actually do want to debounce calls to the
+# same parent.  Let’s at least be explicit about this for now.
+async def test_no_debounce_parent():
+    b = Brrr()
+    calls = Counter()
+    queue = ClosableInMemQueue()
+
+    @b.register_task
+    async def one(_: int) -> int:
+        calls["one"] += 1
+        return 1
+
+    @b.register_task
+    async def foo(a: int) -> int:
+        calls["foo"] += 1
+        # Different argument to avoid debouncing children
+        ret = sum(await one.map([[i] for i in range(a)]))
+        # Obviously we only actually ever want to reach this point once
+        if calls["foo"] == 1 + a:
+            queue.close()
+        return ret
+
+    b.setup(queue, InMemoryByteStore())
+    await asyncio.gather(b.wrrrk(), b.schedule("foo", (50,), {}))
+    await queue.join()
+    # We want foo=2 here
+    assert calls == Counter(one=50, foo=51)
 
 
 async def test_wrrrk_recoverable():
