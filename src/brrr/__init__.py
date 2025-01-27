@@ -1,4 +1,7 @@
-from .brrr import Brrr
+from .brrr import Brrr, SpawnLimitError
+
+# Export only.  Silence linter.
+assert SpawnLimitError
 
 # For ergonomics, we provide a singleton and a bunch of proxies as the module interface.
 _brrr = Brrr()

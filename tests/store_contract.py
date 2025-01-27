@@ -1,9 +1,10 @@
+from abc import ABC, abstractmethod
 from contextlib import asynccontextmanager
+import functools
 from typing import AsyncIterable
 
 import pytest
 
-from abc import ABC, abstractmethod
 from brrr.store import (
     AlreadyExists,
     CompareMismatch,
@@ -189,9 +190,16 @@ class MemoryContract(ByteStoreContract):
             async with memory.with_pending_returns_remove("key") as keys:
                 assert keys == set()
 
-            await memory.add_pending_return("key", "p1")
-            await memory.add_pending_return("key", "p2")
-            await memory.add_pending_return("key", "p2")
+            calls = set()
+
+            async def callback(x):
+                calls.add(x)
+
+            await memory.add_pending_return("key", "p1", functools.partial(callback, 1))
+            await memory.add_pending_return("key", "p2", functools.partial(callback, 2))
+            await memory.add_pending_return("key", "p2", functools.partial(callback, 3))
+
+            assert calls == {1}
 
             with pytest.raises(FakeError):
                 async with memory.with_pending_returns_remove("key") as keys:

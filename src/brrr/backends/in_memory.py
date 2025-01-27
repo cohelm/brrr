@@ -1,8 +1,14 @@
+from __future__ import annotations
+
 import collections
+import typing
 
 from brrr.store import CompareMismatch
 from ..queue import Queue, Message, QueueInfo, QueueIsClosed, QueueIsEmpty
-from ..store import MemKey, Store
+from ..store import Cache, MemKey, Store
+
+if typing.TYPE_CHECKING:
+    from typing import Any
 
 
 class InMemoryQueue(Queue):
@@ -45,12 +51,12 @@ def _key2str(key: MemKey) -> str:
 
 
 # Just to drive the point home
-class InMemoryByteStore(Store):
+class InMemoryByteStore(Store, Cache):
     """
     A store that stores bytes
     """
 
-    inner: dict[str, bytes]
+    inner: dict[str, Any]
 
     def __init__(self):
         self.inner = {}
@@ -87,3 +93,8 @@ class InMemoryByteStore(Store):
         if (k not in self.inner) or (self.inner[k] != expected):
             raise CompareMismatch
         del self.inner[k]
+
+    async def incr(self, k: str) -> int:
+        n = self.inner.get(k, 0) + 1
+        self.inner[k] = n
+        return n

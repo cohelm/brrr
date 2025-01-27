@@ -1,12 +1,16 @@
 from __future__ import annotations
 
 import asyncio
+import base64
 from collections.abc import Awaitable, Callable, Sequence
+import functools
 import logging
 from typing import Any, Union
+from uuid import uuid4
 
 from .store import (
     AlreadyExists,
+    Cache,
     Call,
     Memory,
     Store,
@@ -19,6 +23,10 @@ logger = logging.getLogger(__name__)
 # I’d like for the typechecker to raise an error when a value with this type is
 # called as a function without await.  How?
 AsyncFunc = Callable[..., Awaitable[Any]]
+
+
+class SpawnLimitError(Exception):
+    pass
 
 
 class Defer(Exception):
@@ -40,7 +48,7 @@ class Brrr:
 
     def requires_setup(method):
         def wrapper(self, *args, **kwargs):
-            if self.queue is None or self.memory is None:
+            if self.queue is None or self.memory is None or self.cache is None:
                 raise Exception("Brrr not set up")
             return method(self, *args, **kwargs)
 
@@ -52,6 +60,12 @@ class Brrr:
     # worker
     worker_singleton: Union[Wrrrker, None]
 
+    # Non-critical, non-persistent information.  Still figuring out if it makes
+    # sense to have this dichotomy supported so explicitly at the top-level of
+    # the API.  We run the risk of somehow letting semantically important
+    # information seep into this cache, and suddenly it is effectively just part
+    # of memory again, at which point what’s the split for?
+    cache: Cache | None
     # A storage backend for calls, values and pending returns
     memory: Memory | None
     # A queue of call keys to be processed
@@ -60,18 +74,28 @@ class Brrr:
     # Dictionary of task_name to task instance
     tasks: dict[str, Task]
 
+    # Maximum task executions per root job.  Hard-coded, not intended to be
+    # configurable or ever even be hit, for that matter.  If you hit this you almost
+    # certainly have a pathological workflow edge case causing massive reruns.  If
+    # you actually need to increase this because your flows genuinely hit this
+    # limit, I’m impressed.
+    _spawn_limit: int
+
     def __init__(self):
-        self.tasks = {}
-        self.queue = None
+        self.cache = None
         self.memory = None
+        self.queue = None
+        self.tasks = {}
         self.worker_singleton = None
+        self._spawn_limit = 10_000
 
     # TODO Do we want to pass in a memstore/kv instead?
-    def setup(self, queue: Queue, store: Store):
+    def setup(self, queue: Queue, store: Store, cache: Cache):
         # TODO throw if already instantiated?
-        self.queue = queue
         self._codec = PickleCodec()
+        self.cache = cache
         self.memory = Memory(store, self._codec)
+        self.queue = queue
 
     def are_we_inside_worker_context(self) -> Any:
         return self.worker_singleton
@@ -116,7 +140,7 @@ class Brrr:
         return await self._schedule_call_root(call)
 
     @requires_setup
-    async def _schedule_call_nested(self, call: Call, parent_key: str):
+    async def _schedule_call_nested(self, child: Call, root_id: str, parent_key: str):
         """Schedule this call on the brrr workforce.
 
         This is the real internal entrypoint which should be used by all brrr
@@ -124,7 +148,9 @@ class Brrr:
         what's external.
 
         This method is for calls which are scheduled from within another brrr
-        call, i.e. when this call completes it must kick off the parent.
+        call.  When the work scheduled by this call has completed, that worker
+        must kick off the parent (which is the thread doing the calling of this
+        function, "now").
 
         This will always kick off the call, it doesn't check if a return value
         already exists for this call.
@@ -133,18 +159,29 @@ class Brrr:
         # First the call because it is perennial, it just describes the actual
         # call being made, it doesn’t cause any further action and it’s safe
         # under all races.
-        await self.memory.set_call(call)
+        await self.memory.set_call(child)
         # Note this can be immediately read out by a racing return call. The
         # pathological case is: we are late to a party and another worker is
         # actually just done handling this call, and just before it reads out
         # the addresses to which to return, it is added here.  That’s still OK
         # because it will then immediately call this parent flow back, which is
         # fine because the result does in fact exist.
-        if not await self.memory.add_pending_return(call.memo_key, parent_key):
-            # Even in the previous race scenario this is safe because it just
-            # leads to extra, duplicate, ignored work.
-            logger.debug(f"Queuing deferred child of {parent_key}: {repr(call)}")
-            await self.queue.put(call.memo_key)
+        schedule_job = functools.partial(self._put_job, child.memo_key, root_id)
+        await self.memory.add_pending_return(child.memo_key, parent_key, schedule_job)
+
+    async def _put_job(self, memo_key: str, root_id: str):
+        # Incredibly mother-of-all ad-hoc definitions
+        if (await self.cache.incr(f"brrr_count/{root_id}")) > self._spawn_limit:
+            msg = f"Spawn limit {self._spawn_limit} reached for {root_id} at job {memo_key}"
+            logger.error(msg)
+            # Throw here because it allows the user of brrrlib to decide how to
+            # handle this: what kind of logging?  Does the worker crash in order
+            # to flag the problem to the service orchestrator, relying on auto
+            # restarts to maintain uptime while allowing monitoring to go flag a
+            # bigger issue to admins?  Or just wrap it in a while True loop
+            # which catches and ignores specifically this error?
+            raise SpawnLimitError(msg)
+        await self.queue.put(f"{root_id}/{memo_key}")
 
     @requires_setup
     async def _schedule_call_root(self, call: Call):
@@ -158,7 +195,9 @@ class Brrr:
 
         """
         await self.memory.set_call(call)
-        await self.queue.put(call.memo_key)
+        # Random root id for every call so we can disambiguate retries
+        root_id = base64.urlsafe_b64encode(uuid4().bytes).decode("ascii").strip("=")
+        await self._put_job(call.memo_key, root_id)
 
     @requires_setup
     async def read(self, task_name: str, args: tuple, kwargs: dict):
@@ -278,44 +317,83 @@ class Wrrrker:
     def __exit__(self, exc_type, exc_value, traceback):
         self.brrr.worker_singleton = None
 
-    async def resolve_call(self, memo_key: str):
-        """
-        A queue message is a frame key and a receipt handle
-        The frame key is used to look up the job to be done,
-        the receipt handle is used to tell the queue that the job is done
-        """
+    def _parse_call_id(self, call_id: str):
+        return call_id.split("/")
 
-        call = await self.brrr.memory.get_call(memo_key)
+    async def _handle_msg(self, my_call_id: str):
+        root_id, my_memo_key = self._parse_call_id(my_call_id)
+        me = await self.brrr.memory.get_call(my_memo_key)
 
-        logger.info("Resolving %s %s %s", memo_key, call.task_name, call.argv)
-
+        logger.debug(f"Calling {me}")
         try:
-            value = await self.brrr.evaluate(call)
+            value = await self.brrr.evaluate(me)
         except Defer as defer:
             logger.debug(
                 "Deferring %s %s: %d missing calls",
-                memo_key,
-                call,
+                my_call_id,
+                me,
                 len(defer.calls),
             )
-            for call in defer.calls:
-                await self.brrr._schedule_call_nested(call, memo_key)
+            # This is very ugly but I want to keep the contract of throwing
+            # exceptions on spawn limits, even though it’s _technically_ a user
+            # error.  It’s a very nice failure mode and it allows the user to
+            # automatically lean on their fleet monitoring to measure the health
+            # of their workflows, and debugging this issue can otherwise be very
+            # hard.  Of course the “proper” way for a language to support this
+            # is Lisp’s restarts, where an exception doesn’t unroll the stack
+            # but allows the caller to handle it from the point at which it
+            # occurs.
+            spawn_limit_err = None
+
+            async def handle_child(child):
+                try:
+                    await self.brrr._schedule_call_nested(child, root_id, my_call_id)
+                except SpawnLimitError as e:
+                    nonlocal spawn_limit_err
+                    spawn_limit_err = e
+
+            await asyncio.gather(*map(handle_child, defer.calls))
+            if spawn_limit_err is not None:
+                raise spawn_limit_err from defer
             return
+
+        logger.info("Resolved %s %s", my_call_id, me)
 
         # We can end up in a race against another worker to write the value.
         # We only accept the first entry and the rest will be bounced
         try:
-            await self.brrr.memory.set_value(call.memo_key, value)
+            await self.brrr.memory.set_value(me.memo_key, value)
         except AlreadyExists:
             # It is possible that we can formally prove that this situation
             # means we don't need to requeue here. Until then, let's just feel
             # safer and run through any pending parents below.
             pass
 
-        async with self.brrr.memory.with_pending_returns_remove(
-            call.memo_key
-        ) as returns:
-            await asyncio.gather(*map(self.brrr.queue.put, returns))
+        # This is ugly and it’s tempting to use asyncio.gather with
+        # ‘return_exceptions=True’.  However note I don’t want to blanket catch
+        # all errors: only SpawnLimitError.  You’d need to do manual filtering
+        # of errors, check if there are any non-spawnlimiterrors, if so throw
+        # those immediately from the context block, otherwise throw a spawnlimit
+        # error once the context finishes.  It’s about as convoluted as just
+        # doing it this way, without any of the clarity.
+        spawn_limit_err = None
+        async with self.brrr.memory.with_pending_returns_remove(my_memo_key) as returns:
+            for pending in returns:
+                try:
+                    await self._schedule_return_call(pending)
+                except SpawnLimitError as e:
+                    logger.info(
+                        f"Spawn limit reached returning from {my_memo_key} to {pending}; clearing the return"
+                    )
+                    spawn_limit_err = e
+        if spawn_limit_err is not None:
+            raise spawn_limit_err
+
+    async def _schedule_return_call(self, parent_id):
+        # These are all root_id/memo_key pairs which is great because every
+        # return should be retried in its original root context.
+        root_id, parent_key = self._parse_call_id(parent_id)
+        await self.brrr._put_job(parent_key, root_id)
 
     async def loop(self):
         """
@@ -337,7 +415,6 @@ class Wrrrker:
                     logger.info("Queue is closed")
                     return
 
-                memo_key = message.body
-                await self.resolve_call(memo_key)
+                await self._handle_msg(message.body)
 
                 await self.brrr.queue.delete_message(message.receipt_handle)

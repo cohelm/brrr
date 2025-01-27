@@ -1,12 +1,19 @@
+from __future__ import annotations
+
 from abc import abstractmethod, ABC
-from collections.abc import AsyncIterator
+from collections.abc import AsyncIterator, Awaitable, Callable
 from collections import namedtuple
 from contextlib import asynccontextmanager
 from dataclasses import dataclass
 import hashlib
+import json
+import logging
 import pickle
+import time
 from typing import Any, TypeVar
 
+
+logger = logging.getLogger(__name__)
 
 # Very much WIP: this is the most generic “everything goes” Python way of
 # dealing with arguments, but we should either lock this down, or allow the user
@@ -48,6 +55,45 @@ class Info:
     retries: int | None
     retry_delay_seconds: int | None
     log_prints: bool | None
+
+
+@dataclass
+class PendingReturns:
+    """Set of parents waiting for a child call to complete.
+
+    When the child call is scheduled, a timestamp is added to this record to
+    indicate it doesn't need to be rescheduled.  If the record exists but with a
+    null scheduled timestamp, you cannot be sure this child has ever actually
+    been scheduled, so it should be rescheduled.
+
+    This record is used in highly race sensitive context and is the point of a
+    lot of CASing.
+
+    """
+
+    # Unix time, in seconds.  Purposefully coarse to drive home that this value
+    # is not meant for synchronization, only for measuring age.  Don’t use this
+    # to determine which pending return record was written later than another or
+    # any such event serialization where order matters.  This is for expiring
+    # entries in a stale cache, that’s all.
+    scheduled_at: int | None
+    returns: set[str]
+
+    # For some reason I’m annoyed that this uses JSON internally but it really
+    # is the most pragmatic choice here.  I so wished we could have used some
+    # cool prefix-length-encoded format but the reality is we need nesting,
+    # lists, ints, optional null values, etc—aka json.  🙁 As long as it’s not a
+    # dictionary I can live with it.
+
+    def encode(self) -> bytes:
+        return json.dumps([self.scheduled_at, list(sorted(self.returns))]).encode(
+            "utf-8"
+        )
+
+    @classmethod
+    def decode(cls, enc: bytes) -> PendingReturns:
+        time, returns = json.loads(enc.decode("utf-8"))
+        return PendingReturns(time, set(returns))
 
 
 MemKey = namedtuple("MemKey", ["type", "id"])
@@ -108,6 +154,45 @@ class Store(ABC):
 
         The expected value CANNOT be None.  If the expected value is None,
         meaning there currently is no value, then don't call this function.
+
+        """
+        raise NotImplementedError()
+
+
+class Cache(ABC):
+    """A best-effort store for light-weight, non-critical data.
+
+    Values in this cache are allowed, even encouraged to expire within a few
+    minutes time.  They don't need to be consistent across nodes, there is no
+    requirement for read-after-write nor even write-after-write consistency.
+    It's all best effort and the worst case consequence of returning invalid
+    data to brrr is just that more duplicated work might happen.  No correctness
+    guarantees would be violated by brrr if this cache returns incorrect /
+    incomplete / out-of-date data.
+
+    Basically a formalization of the subset of Redis which we use.
+
+    This is technically a "store" and it could be implemented by the exact same
+    class which implements the Store interface.  It has only been separated out
+    because it could be nice to implement this separately.  Concretely, it makes
+    sense to use Dynamo for the store, and Redis for the cache, but do what you
+    want.
+
+    Note the required guarantees on this interface are very lax, both in
+    persistence and immediately, i.e. it's ok to return speculative responses.
+
+    It's undefined what happens if the keys for these elements are shared
+    between cache, memory and/or queue.  It's probably worth being explicit
+    about it at some point.
+
+    """
+
+    @abstractmethod
+    async def incr(self, k: str) -> int:
+        """Increase by 1 and return the new value.
+
+        In reality this is used for spawn limit tracking but 🤫 that's an
+        implementation detail.
 
         """
         raise NotImplementedError()
@@ -246,15 +331,6 @@ class Memory:
     async def set_info(self, task_name: str, value: Info):
         await self.store.set(MemKey("info", task_name), self.codec.encode(value))
 
-    def _encode_returns(self, returns: set[str]) -> bytes:
-        # TODO ehhh, used sets before, but they don't always hash to the same value.
-        # could use lists and keep them sorted and is a safe compare across implementations.
-        # This hack gets us to v1
-        return self.codec.encode(",".join(sorted(returns)))
-
-    def _decode_returns(self, enc: bytes) -> set[str]:
-        return set(self.codec.decode(enc).split(","))
-
     @asynccontextmanager
     async def _with_cas(self) -> AsyncIterator:
         """Wrap a CAS exception generating body.
@@ -285,7 +361,12 @@ class Memory:
             else:
                 return
 
-    async def add_pending_return(self, memo_key: str, new_return: str) -> bool:
+    async def add_pending_return(
+        self,
+        memo_key: str,
+        new_return: str,
+        schedule_job: Callable[[], Awaitable[None]],
+    ):
         """Register a pending return address for a call.
 
         Note this is inherently racy: as soon as this call completes, another
@@ -303,19 +384,44 @@ class Memory:
         # every single line.
         async with self._with_cas():
             memkey = MemKey("pending_returns", memo_key)
+            should_store_again = False
             try:
                 existing_enc = await self.store.get(memkey)
             except KeyError:
-                val = self._encode_returns({new_return})
-                await self.store.set_new_value(memkey, val)
-                return False
+                existing = PendingReturns(None, {new_return})
+                existing_enc = existing.encode()
+                logger.debug(f"    ... none found. Creating new: {existing_enc}")
+                # Note the double CAS!
+                await self.store.set_new_value(memkey, existing_enc)
+                adj = "First"
+                verb = "added to"
             else:
-                existing = self._decode_returns(existing_enc)
-                if new_return not in existing:
-                    updated_keys = existing | {new_return}
-                    val = self._encode_returns(updated_keys)
-                    await self.store.compare_and_set(memkey, val, existing_enc)
-                return True
+                logger.debug(f"    ... found! {existing_enc}")
+                existing = PendingReturns.decode(existing_enc)
+                if new_return not in existing.returns:
+                    existing.returns |= {new_return}
+                    should_store_again = True
+                    adj = "Another"
+                    verb = "added to"
+                else:
+                    # 🙄
+                    adj = "Existing"
+                    verb = "ignored by"
+
+            if existing.scheduled_at is None:
+                await schedule_job()
+                existing.scheduled_at = int(time.time())
+                should_store_again = True
+                verb += " and scheduled"
+
+            # Something changed, store the update.  Think through the potential
+            # race conditions here, in particular.  CAS failures, restarts, etc.
+            if should_store_again:
+                await self.store.compare_and_set(
+                    memkey, existing.encode(), existing_enc
+                )
+
+            logger.debug(f"{adj} pending return {new_return} {verb} {memo_key}")
 
     @asynccontextmanager
     async def with_pending_returns_remove(
@@ -336,7 +442,8 @@ class Memory:
                 # https://stackoverflow.com/a/34519857
                 yield set()
                 return
-            to_handle = self._decode_returns(pending_enc) - handled
+            to_handle = PendingReturns.decode(pending_enc).returns - handled
+            logger.debug(f"Handling returns for {memo_key}: {to_handle}...")
             yield to_handle
             handled |= to_handle
             await self.store.compare_and_delete(memkey, pending_enc)

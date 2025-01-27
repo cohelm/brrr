@@ -5,6 +5,7 @@ import logging
 import typing
 
 from ..queue import Message, QueueInfo, RichQueue, QueueIsEmpty
+from ..store import Cache
 
 COMPARE_AND_SET_SCRIPT = """
 local key = KEYS[1]
@@ -99,7 +100,7 @@ redis.call('XDEL', stream, msg_id)
 logger = logging.getLogger(__name__)
 
 
-class RedisStream(RichQueue):
+class RedisStream(RichQueue, Cache):
     client: Redis
 
     queue: str
@@ -198,3 +199,6 @@ class RedisStream(RichQueue):
             num_messages=total,
             num_inflight_messages=pending["pending"],
         )
+
+    async def incr(self, key: str) -> int:
+        return await self.client.incr(key)

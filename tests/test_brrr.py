@@ -5,7 +5,8 @@ import pytest
 
 from brrr import Brrr
 from brrr.backends.in_memory import InMemoryByteStore
-import brrr.queue as q
+
+from .closable_test_queue import ClosableInMemQueue
 
 
 @pytest.fixture
@@ -27,52 +28,15 @@ async def test_no_brrr_map(handle_nobrrr):
     assert await handle_nobrrr.map([[3], [4]]) == [6, 10]
 
 
-class ClosableInMemQueue(q.Queue):
-    """A message queue which can be closed."""
-
-    def __init__(self):
-        self.operational = True
-        self.closing = False
-        self.i = 0
-        self.received = asyncio.Queue()
-        self.handling = {}
-
-    def close(self):
-        assert not self.closing
-        self.closing = True
-        self.received.shutdown()
-
-    async def join(self):
-        await self.received.join()
-
-    async def get_message(self):
-        assert self.operational
-        try:
-            body = await self.received.get()
-        except asyncio.QueueShutDown:
-            assert not self.handling
-            self.operational = False
-            raise q.QueueIsClosed()
-
-        handle = str(self.i)
-        self.i += 1
-        self.handling[handle] = body
-        return q.Message(body=body, receipt_handle=handle)
-
-    async def put(self, body: str):
-        assert self.operational
-        await self.received.put(body)
-
-    async def delete_message(self, receipt_handle: str):
-        assert self.operational
-        del self.handling[receipt_handle]
-        self.received.task_done()
-
-    async def set_message_timeout(self, receipt_handle: str, seconds: int):
-        assert receipt_handle in self.handling
-
-    async def get_info(self):
-        raise NotImplementedError()
+async def test_nop_closed_queue():
+    b = Brrr()
+    store = InMemoryByteStore()
+    queue = ClosableInMemQueue()
+    queue.close()
+    b.setup(queue, store, store)
+    await b.wrrrk()
+    await b.wrrrk()
+    await b.wrrrk()
 
 
 async def test_stop_when_empty():
@@ -80,6 +44,7 @@ async def test_stop_when_empty():
     b = Brrr()
     calls_pre = Counter()
     calls_post = Counter()
+    store = InMemoryByteStore()
     queue = ClosableInMemQueue()
 
     @b.register_task
@@ -93,8 +58,9 @@ async def test_stop_when_empty():
             queue.close()
         return res
 
-    b.setup(queue, InMemoryByteStore())
-    await asyncio.gather(b.wrrrk(), b.schedule("foo", (3,), {}))
+    b.setup(queue, store, store)
+    await b.schedule("foo", (3,), {})
+    await b.wrrrk()
     await queue.join()
     assert calls_pre == Counter({0: 1, 1: 2, 2: 2, 3: 2})
     assert calls_post == Counter({1: 1, 2: 1, 3: 1})
@@ -103,6 +69,7 @@ async def test_stop_when_empty():
 async def test_debounce_child():
     b = Brrr()
     calls = Counter()
+    store = InMemoryByteStore()
     queue = ClosableInMemQueue()
 
     @b.register_task
@@ -116,9 +83,11 @@ async def test_debounce_child():
             queue.close()
         return ret
 
-    b.setup(queue, InMemoryByteStore())
-    await asyncio.gather(b.wrrrk(), b.schedule("foo", (3,), {}))
+    b.setup(queue, store, store)
+    await b.schedule("foo", (3,), {})
+    await b.wrrrk()
     await queue.join()
+    assert not queue.handling
     assert calls == Counter({0: 1, 1: 2, 2: 2, 3: 2})
 
 
@@ -127,6 +96,7 @@ async def test_debounce_child():
 async def test_no_debounce_parent():
     b = Brrr()
     calls = Counter()
+    store = InMemoryByteStore()
     queue = ClosableInMemQueue()
 
     @b.register_task
@@ -144,9 +114,11 @@ async def test_no_debounce_parent():
             queue.close()
         return ret
 
-    b.setup(queue, InMemoryByteStore())
-    await asyncio.gather(b.wrrrk(), b.schedule("foo", (50,), {}))
+    b.setup(queue, store, store)
+    await b.schedule("foo", (50,), {})
+    await b.wrrrk()
     await queue.join()
+    assert not queue.handling
     # We want foo=2 here
     assert calls == Counter(one=50, foo=51)
 
@@ -177,7 +149,7 @@ async def test_wrrrk_recoverable():
             queue.close()
         return ret
 
-    b.setup(queue, store)
+    b.setup(queue, store, store)
     my_error_encountered = False
     await b.schedule("foo", (2,), {})
     try:
@@ -185,12 +157,15 @@ async def test_wrrrk_recoverable():
     except MyError:
         my_error_encountered = True
     assert my_error_encountered
+    assert queue.handling
 
     # Trick the test queue implementation to survive this
     queue.received = asyncio.Queue()
     queue.handling = {}
     await b.schedule("bar", (2,), {})
     await b.wrrrk()
+    await queue.join()
+    assert not queue.handling
 
     assert calls == Counter(
         {

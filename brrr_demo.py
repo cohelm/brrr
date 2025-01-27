@@ -107,11 +107,11 @@ async def with_brrr_wrap() -> AsyncIterator[tuple[RedisStream, DynamoDbMemStore]
 
 @asynccontextmanager
 async def with_brrr(reset_backends):
-    async with with_brrr_wrap() as (queue, store):
+    async with with_brrr_wrap() as (redis, dynamo):
         if reset_backends:
-            await queue.setup()
-            await store.create_table()
-        brrr.setup(queue, store)
+            await redis.setup()
+            await dynamo.create_table()
+        brrr.setup(redis, dynamo, redis)
         yield
 
 
