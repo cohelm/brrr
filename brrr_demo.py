@@ -220,7 +220,7 @@ async def amain():
     if f:
         await f(*sys.argv[2:])
     else:
-        print(f"Usage: brrr_demo.py <{" | ".join(cmds.keys())}>")
+        print(f"Usage: brrr_demo.py <{' | '.join(cmds.keys())}>")
         sys.exit(1)
 
 

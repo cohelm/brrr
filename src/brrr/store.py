@@ -33,7 +33,7 @@ class Call:
     def __str__(self):
         args = [repr(x) for x in self.argv[0]]
         kwargs = ["=".join(x) for x in self.argv[1].items()]
-        return f"Call({self.task_name}({", ".join(args + kwargs)}))"
+        return f"Call({self.task_name}({', '.join(args + kwargs)}))"
 
 
 @dataclass
