@@ -4,6 +4,7 @@ import pytest
 
 from brrr import Brrr, SpawnLimitError
 from brrr.backends.in_memory import InMemoryByteStore
+from brrr.codec import PickleCodec
 
 from .closable_test_queue import ClosableInMemQueue
 
@@ -25,7 +26,7 @@ async def test_spawn_limit_depth():
             return 0
         return await foo(a - 1)
 
-    b.setup(queue, store, store)
+    b.setup(queue, store, store, PickleCodec())
     await b.schedule("foo", (b._spawn_limit + 3,), {})
     with pytest.raises(SpawnLimitError):
         await b.wrrrk()
@@ -56,7 +57,7 @@ async def test_spawn_limit_breadth_mapped():
             queue.close()
         return val
 
-    b.setup(queue, store, store)
+    b.setup(queue, store, store, PickleCodec())
     await b.schedule("foo", (b._spawn_limit + 4,), {})
     with pytest.raises(SpawnLimitError):
         await b.wrrrk()
@@ -88,7 +89,7 @@ async def test_spawn_limit_recoverable():
             queue.close()
         return val
 
-    b.setup(queue, store, cache)
+    b.setup(queue, store, cache, PickleCodec())
     spawn_limit_encountered = False
     n = b._spawn_limit + 1
     await b.schedule("foo", (n,), {})
@@ -131,7 +132,7 @@ async def test_spawn_limit_breadth_manual():
         queue.close()
         return total
 
-    b.setup(queue, store, store)
+    b.setup(queue, store, store, PickleCodec())
     await b.schedule("foo", (b._spawn_limit + 3,), {})
     with pytest.raises(SpawnLimitError):
         await b.wrrrk()
@@ -162,7 +163,7 @@ async def test_spawn_limit_cached():
         final = val
         return val
 
-    b.setup(queue, store, store)
+    b.setup(queue, store, store, PickleCodec())
     await b.schedule("foo", (b._spawn_limit + 5,), {})
     await b.wrrrk()
     await queue.join()

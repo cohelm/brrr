@@ -20,6 +20,7 @@ from brrr.backends.redis import RedisStream
 from brrr.backends.dynamo import DynamoDbMemStore
 import brrr
 from brrr import task
+from brrr.codec import PickleCodec
 
 logger = logging.getLogger(__name__)
 routes = web.RouteTableDef()
@@ -111,7 +112,7 @@ async def with_brrr(reset_backends):
         if reset_backends:
             await redis.setup()
             await dynamo.create_table()
-        brrr.setup(redis, dynamo, redis)
+        brrr.setup(redis, dynamo, redis, PickleCodec())
         yield
 
 

@@ -5,11 +5,11 @@ from typing import AsyncIterable
 
 import pytest
 
+from brrr.codec import PickleCodec
 from brrr.store import (
     AlreadyExists,
     CompareMismatch,
     Memory,
-    PickleCodec,
     Store,
     MemKey,
 )

@@ -5,6 +5,7 @@ import pytest
 
 from brrr import Brrr
 from brrr.backends.in_memory import InMemoryByteStore
+from brrr.codec import PickleCodec
 
 from .closable_test_queue import ClosableInMemQueue
 
@@ -33,7 +34,7 @@ async def test_nop_closed_queue():
     store = InMemoryByteStore()
     queue = ClosableInMemQueue()
     queue.close()
-    b.setup(queue, store, store)
+    b.setup(queue, store, store, PickleCodec())
     await b.wrrrk()
     await b.wrrrk()
     await b.wrrrk()
@@ -58,7 +59,7 @@ async def test_stop_when_empty():
             queue.close()
         return res
 
-    b.setup(queue, store, store)
+    b.setup(queue, store, store, PickleCodec())
     await b.schedule("foo", (3,), {})
     await b.wrrrk()
     await queue.join()
@@ -83,7 +84,7 @@ async def test_debounce_child():
             queue.close()
         return ret
 
-    b.setup(queue, store, store)
+    b.setup(queue, store, store, PickleCodec())
     await b.schedule("foo", (3,), {})
     await b.wrrrk()
     await queue.join()
@@ -114,7 +115,7 @@ async def test_no_debounce_parent():
             queue.close()
         return ret
 
-    b.setup(queue, store, store)
+    b.setup(queue, store, store, PickleCodec())
     await b.schedule("foo", (50,), {})
     await b.wrrrk()
     await queue.join()
@@ -149,7 +150,7 @@ async def test_wrrrk_recoverable():
             queue.close()
         return ret
 
-    b.setup(queue, store, store)
+    b.setup(queue, store, store, PickleCodec())
     my_error_encountered = False
     await b.schedule("foo", (2,), {})
     try:

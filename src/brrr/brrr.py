@@ -12,9 +12,9 @@ from .store import (
     AlreadyExists,
     Cache,
     Call,
+    Codec,
     Memory,
     Store,
-    PickleCodec,
 )
 from .queue import Queue, QueueIsClosed, QueueIsEmpty
 
@@ -90,9 +90,14 @@ class Brrr:
         self._spawn_limit = 10_000
 
     # TODO Do we want to pass in a memstore/kv instead?
-    def setup(self, queue: Queue, store: Store, cache: Cache):
-        # TODO throw if already instantiated?
-        self._codec = PickleCodec()
+    def setup(self, queue: Queue, store: Store, cache: Cache, codec: Codec):
+        """Initialize the dependencies used by this brrr instance.
+
+        Currently extremely explicit about its inputs while we're still figuring
+        out the API.
+
+        """
+        self._codec = codec
         self.cache = cache
         self.memory = Memory(store, self._codec)
         self.queue = queue

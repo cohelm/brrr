@@ -5,12 +5,12 @@ from collections.abc import AsyncIterator, Awaitable, Callable
 from collections import namedtuple
 from contextlib import asynccontextmanager
 from dataclasses import dataclass
-import hashlib
 import json
 import logging
-import pickle
 import time
 from typing import Any, TypeVar
+
+from brrr.codec import Codec
 
 
 logger = logging.getLogger(__name__)
@@ -199,86 +199,6 @@ class Cache(ABC):
 
         """
         raise NotImplementedError()
-
-
-class Codec(ABC):
-    """Codec for values that pass around the brrr datastore.
-
-    If you want inter-language calling you'll need to ensure both languages
-    can compute this.
-
-    The serializations must be deterministic, whatever that means for you.
-    E.g. if you use dictionaries, make sure to order them before serializing.
-
-    For any serious use you want strict control over the types you accept here
-    and explicit serialization routines.
-
-    """
-
-    @abstractmethod
-    def hash_call(self, task_name: str, args: tuple, kwargs: dict) -> str:
-        """Compute the memo_key for a Call.
-
-        The output of this function is required for actually _creating_ a Call
-        instance.  It's not the cleanest API (you could imagine e.g. a property
-        getter on the Call instance) but it does make something very explicit: a
-        Call instance is only relevant in the context of a Codec.  This
-        dependency is crucial: codecs are the only interface between a store and
-        this specific bit of code interacting with it.  Particularly with
-        multiple languages it is important that all serialization and
-        deserialization is done through the Codec, and computing a memkey from
-        the Call description is part of that.
-
-        """
-        raise NotImplementedError()
-
-    @abstractmethod
-    def encode_args(self, args: tuple, kwargs: dict) -> bytes:
-        raise NotImplementedError()
-
-    @abstractmethod
-    def decode_args(self, payload: bytes) -> tuple[tuple, dict]:
-        raise NotImplementedError()
-
-    @abstractmethod
-    def encode_return(self, val: Any) -> bytes:
-        raise NotImplementedError()
-
-    @abstractmethod
-    def decode_return(self, payload: bytes) -> Any:
-        raise NotImplementedError()
-
-
-class PickleCodec(Codec):
-    """Very liberal codec, based on hopes and dreams.
-
-    Don't use this in production because you run the risk of non-deterministic
-    serialization, e.g. dicts with arbitrary order.
-
-    """
-
-    def encode(self, val: Any) -> bytes:
-        return pickle.dumps(val)
-
-    def decode(self, b: bytes) -> Any:
-        return pickle.loads(b)
-
-    def hash_call(self, task_name: str, args: tuple, kwargs: dict) -> str:
-        h = hashlib.new("sha256")
-        h.update(repr([task_name, args, list(sorted(kwargs.items()))]).encode())
-        return h.hexdigest()
-
-    def encode_args(self, args: tuple, kwargs: dict) -> bytes:
-        return pickle.dumps((args, kwargs))
-
-    def decode_args(self, payload: bytes) -> tuple[tuple, dict]:
-        return pickle.loads(payload)
-
-    def encode_return(self, val: Any) -> bytes:
-        return pickle.dumps(val)
-
-    def decode_return(self, payload: bytes) -> Any:
-        return pickle.loads(payload)
 
 
 class Memory:
