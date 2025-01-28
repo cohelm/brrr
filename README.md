@@ -14,7 +14,7 @@ Differences between Brrr and other workflow schedulers:
 
 N.B.: That last point means that you can use Brrr with SQS & DynamoDB to scale basically as far as your wallet can stretch without any further config.
 
-There are currently implementations for Redis and SQS as queues, and for DynamoDB as a database.
+There are currently implementations for Redis as a queue, and for DynamoDB as a database.
 
 ## Python Library
 
