@@ -247,7 +247,9 @@
                 name = "brrr-test-unit";
                 category = "test";
                 help = "Tests which don't need dependencies";
-                command = "pytest -m 'not dependencies'";
+                command = ''
+                  pytest -m 'not dependencies' "$@"
+                '';
               }
               {
                 name = "brrr-test-all";
@@ -263,7 +265,7 @@
                   export AWS_ACCESS_KEY_ID
                   : "''${AWS_SECRET_ACCESS_KEY=fake}"
                   export AWS_SECRET_ACCESS_KEY
-                  exec pytest
+                  exec pytest "$@"
                 )'';
               }
               # Always build aarch64-linux
