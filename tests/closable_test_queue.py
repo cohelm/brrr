@@ -4,6 +4,9 @@ import asyncio
 import brrr.queue as q
 
 
+_CloseSentinel = object()
+
+
 class ClosableInMemQueue(q.Queue):
     """A message queue which can be closed."""
 
@@ -14,10 +17,10 @@ class ClosableInMemQueue(q.Queue):
         self.received = asyncio.Queue()
         self.handling = {}
 
-    def close(self):
+    async def close(self):
         assert not self.closing
         self.closing = True
-        self.received.shutdown()
+        await self.received.put(_CloseSentinel)
 
     async def join(self):
         await self.received.join()
@@ -26,16 +29,16 @@ class ClosableInMemQueue(q.Queue):
         if not self.operational:
             raise q.QueueIsClosed()
 
-        try:
-            body = await self.received.get()
-        except asyncio.QueueShutDown:
+        payload = await self.received.get()
+        if payload is _CloseSentinel:
             self.operational = False
+            self.received.task_done()
             raise q.QueueIsClosed()
 
         handle = str(self.i)
         self.i += 1
-        self.handling[handle] = body
-        return q.Message(body=body, receipt_handle=handle)
+        self.handling[handle] = payload
+        return q.Message(body=payload, receipt_handle=handle)
 
     async def put(self, body: str):
         assert self.operational

@@ -22,7 +22,7 @@ async def test_spawn_limit_depth():
         n += 1
         if a == 0:
             # Prevent false positives from this test by exiting cleanly at some point
-            queue.close()
+            await queue.close()
             return 0
         return await foo(a - 1)
 
@@ -54,7 +54,7 @@ async def test_spawn_limit_breadth_mapped():
         val = sum(await one.map([[x] for x in range(a)]))
         # Remove this if-guard when return calls are debounced.
         if calls["foo"] == a + 1:
-            queue.close()
+            await queue.close()
         return val
 
     b.setup(queue, store, store, PickleCodec())
@@ -86,7 +86,7 @@ async def test_spawn_limit_recoverable():
         val = sum(await one.map([[x] for x in range(a)]))
         # Remove this if-guard when return calls are debounced.
         if calls["foo"] == a + 1:
-            queue.close()
+            await queue.close()
         return val
 
     b.setup(queue, store, cache, PickleCodec())
@@ -129,7 +129,7 @@ async def test_spawn_limit_breadth_manual():
             # Pass a different argument to avoid the debouncer
             total += await one(i)
 
-        queue.close()
+        await queue.close()
         return total
 
     b.setup(queue, store, store, PickleCodec())
@@ -158,7 +158,7 @@ async def test_spawn_limit_cached():
     @b.register_task
     async def foo(a: int) -> int:
         val = sum(await same.map([[1]] * a))
-        queue.close()
+        await queue.close()
         nonlocal final
         final = val
         return val

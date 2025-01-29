@@ -35,7 +35,7 @@ async def test_codec_key_no_args():
             val += await same(i)
 
         assert val == a
-        queue.close()
+        await queue.close()
         return val
 
     b.setup(queue, store, store, codec)
@@ -71,7 +71,7 @@ async def test_codec_api():
             + await plus(**dict(x=7, y="8"))
         )
         assert val == sum(range(9))
-        queue.close()
+        await queue.close()
         return val
 
     b.setup(queue, store, store, codec)

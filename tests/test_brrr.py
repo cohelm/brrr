@@ -33,7 +33,7 @@ async def test_nop_closed_queue():
     b = Brrr()
     store = InMemoryByteStore()
     queue = ClosableInMemQueue()
-    queue.close()
+    await queue.close()
     b.setup(queue, store, store, PickleCodec())
     await b.wrrrk()
     await b.wrrrk()
@@ -56,7 +56,7 @@ async def test_stop_when_empty():
         res = await foo(a - 1)
         calls_post[a] += 1
         if a == 3:
-            queue.close()
+            await queue.close()
         return res
 
     b.setup(queue, store, store, PickleCodec())
@@ -81,7 +81,7 @@ async def test_debounce_child():
 
         ret = sum(await foo.map([[a - 1]] * 50))
         if a == 3:
-            queue.close()
+            await queue.close()
         return ret
 
     b.setup(queue, store, store, PickleCodec())
@@ -112,7 +112,7 @@ async def test_no_debounce_parent():
         ret = sum(await one.map([[i] for i in range(a)]))
         # Obviously we only actually ever want to reach this point once
         if calls["foo"] == 1 + a:
-            queue.close()
+            await queue.close()
         return ret
 
     b.setup(queue, store, store, PickleCodec())
@@ -147,7 +147,7 @@ async def test_wrrrk_recoverable():
             return 0
         ret = await bar(a - 1)
         if a == 2:
-            queue.close()
+            await queue.close()
         return ret
 
     b.setup(queue, store, store, PickleCodec())
