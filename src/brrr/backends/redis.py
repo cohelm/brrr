@@ -143,7 +143,7 @@ class RedisStream(RichQueue, Cache):
 
         logger.debug(f"Created fresh queue {self.queue}")
 
-    async def put(self, body: str):
+    async def put_message(self, body: str):
         logger.debug(f"Putting new message on {self.queue}")
         # Messages can not be added to specific groups, so we just create a stream per topic
         await self.client.xadd(self.queue, {"body": body})
@@ -168,10 +168,11 @@ class RedisStream(RichQueue, Cache):
             await asyncio.sleep(1)
             raise QueueIsEmpty
         body, receipt_handle = response[:2]
+        await self._delete_message(receipt_handle)
         return Message(body, receipt_handle)
 
     # TODO: This has a bug; xack does not remove the message from the stream
-    async def delete_message(self, receipt_handle: str):
+    async def _delete_message(self, receipt_handle: str):
         # The receipt handle here must match the message ID
         # self.client.xack(self.queue, self.group, receipt_handle)
         keys = (self.queue,)

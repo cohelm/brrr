@@ -13,9 +13,7 @@ class ClosableInMemQueue(q.Queue):
     def __init__(self):
         self.operational = True
         self.closing = False
-        self.i = 0
         self.received = asyncio.Queue()
-        self.handling = {}
 
     async def close(self):
         assert not self.closing
@@ -35,22 +33,12 @@ class ClosableInMemQueue(q.Queue):
             self.received.task_done()
             raise q.QueueIsClosed()
 
-        handle = str(self.i)
-        self.i += 1
-        self.handling[handle] = payload
-        return q.Message(body=payload, receipt_handle=handle)
+        self.received.task_done()
+        return q.Message(body=payload)
 
-    async def put(self, body: str):
+    async def put_message(self, body: str):
         assert self.operational
         await self.received.put(body)
-
-    async def delete_message(self, receipt_handle: str):
-        assert self.operational
-        del self.handling[receipt_handle]
-        self.received.task_done()
-
-    async def set_message_timeout(self, receipt_handle: str, seconds: int):
-        assert receipt_handle in self.handling
 
     async def get_info(self):
         raise NotImplementedError()

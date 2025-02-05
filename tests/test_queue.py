@@ -33,15 +33,15 @@ class QueueContract(ABC):
             if self.has_accurate_info:
                 assert (await queue.get_info()).num_messages == 0
 
-            await queue.put("message-1")
+            await queue.put_message("message-1")
             if self.has_accurate_info:
                 assert (await queue.get_info()).num_messages == 1
 
-            await queue.put("message-2")
+            await queue.put_message("message-2")
             if self.has_accurate_info:
                 assert (await queue.get_info()).num_messages == 2
 
-            await queue.put("message-3")
+            await queue.put_message("message-3")
             if self.has_accurate_info:
                 assert (await queue.get_info()).num_messages == 3
 

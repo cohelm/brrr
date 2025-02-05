@@ -42,7 +42,6 @@ async def test_codec_key_no_args():
     await b.schedule("foo", (50,), {})
     await b.wrrrk()
     await queue.join()
-    assert not queue.handling
     assert calls == Counter(
         {
             "same(1)": 1,
@@ -78,7 +77,6 @@ async def test_codec_api():
     await b.schedule("foo", (), {})
     await b.wrrrk()
     await queue.join()
-    assert not queue.handling
     codec.hash_call.assert_has_calls(
         [
             call("foo", (), {}),

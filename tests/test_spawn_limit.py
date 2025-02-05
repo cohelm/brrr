@@ -30,7 +30,6 @@ async def test_spawn_limit_depth():
     await b.schedule("foo", (b._spawn_limit + 3,), {})
     with pytest.raises(SpawnLimitError):
         await b.wrrrk()
-    assert queue.handling
 
     assert n == b._spawn_limit
 
@@ -61,7 +60,6 @@ async def test_spawn_limit_breadth_mapped():
     await b.schedule("foo", (b._spawn_limit + 4,), {})
     with pytest.raises(SpawnLimitError):
         await b.wrrrk()
-    assert queue.handling
 
     assert calls["foo"] == 1
 
@@ -102,7 +100,6 @@ async def test_spawn_limit_recoverable():
         except SpawnLimitError:
             spawn_limit_encountered = True
     # I expect messages to be left pending as unhandled here, that’s the point:
-    assert queue.handling
 
     assert spawn_limit_encountered
     # Once we debounce parent calls this should be foo=2
@@ -136,7 +133,6 @@ async def test_spawn_limit_breadth_manual():
     await b.schedule("foo", (b._spawn_limit + 3,), {})
     with pytest.raises(SpawnLimitError):
         await b.wrrrk()
-    assert queue.handling
 
     assert calls == Counter(dict(one=b._spawn_limit / 2, foo=b._spawn_limit / 2))
 
@@ -167,7 +163,6 @@ async def test_spawn_limit_cached():
     await b.schedule("foo", (b._spawn_limit + 5,), {})
     await b.wrrrk()
     await queue.join()
-    assert not queue.handling
 
     assert n == 1
     assert final == b._spawn_limit + 5

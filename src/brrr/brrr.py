@@ -186,7 +186,7 @@ class Brrr:
             # bigger issue to admins?  Or just wrap it in a while True loop
             # which catches and ignores specifically this error?
             raise SpawnLimitError(msg)
-        await self.queue.put(f"{root_id}/{memo_key}")
+        await self.queue.put_message(f"{root_id}/{memo_key}")
 
     @requires_setup
     async def _schedule_call_root(self, call: Call):
@@ -417,5 +417,3 @@ class Wrrrker:
                     return
 
                 await self._handle_msg(message.body)
-
-                await self.brrr.queue.delete_message(message.receipt_handle)

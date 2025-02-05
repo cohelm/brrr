@@ -88,7 +88,6 @@ async def test_debounce_child():
     await b.schedule("foo", (3,), {})
     await b.wrrrk()
     await queue.join()
-    assert not queue.handling
     assert calls == Counter({0: 1, 1: 2, 2: 2, 3: 2})
 
 
@@ -119,7 +118,6 @@ async def test_no_debounce_parent():
     await b.schedule("foo", (50,), {})
     await b.wrrrk()
     await queue.join()
-    assert not queue.handling
     # We want foo=2 here
     assert calls == Counter(one=50, foo=51)
 
@@ -158,15 +156,12 @@ async def test_wrrrk_recoverable():
     except MyError:
         my_error_encountered = True
     assert my_error_encountered
-    assert queue.handling
 
     # Trick the test queue implementation to survive this
     queue.received = asyncio.Queue()
-    queue.handling = {}
     await b.schedule("bar", (2,), {})
     await b.wrrrk()
     await queue.join()
-    assert not queue.handling
 
     assert calls == Counter(
         {
