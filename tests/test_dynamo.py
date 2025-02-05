@@ -8,7 +8,7 @@ import pytest
 from brrr.backends.dynamo import DynamoDbMemStore
 from brrr.store import Store
 
-from .store_contract import MemoryContract
+from .contract_store import MemoryContract
 
 
 @pytest.mark.dependencies

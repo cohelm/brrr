@@ -4,7 +4,7 @@ from typing import AsyncIterable
 from brrr.backends.in_memory import InMemoryByteStore
 from brrr.store import Store
 
-from .store_contract import MemoryContract
+from .contract_store import MemoryContract
 
 
 class TestInMemoryByteStore(MemoryContract):
