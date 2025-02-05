@@ -181,17 +181,6 @@ class RedisStream(RichQueue, Cache):
         )
         await self.client.eval(ACK_FUNCTION, len(keys), *keys, *argv)
 
-    async def set_message_timeout(self, receipt_handle: str, seconds: int):
-        # The seconds don't do anything for now; I wasn't sure how to translate a fixed timeout to the Redis model
-        # At least this resets the idle time @jkz
-        await self.client.xclaim(
-            self.queue,
-            self.group,
-            self.consumer,
-            min_idle_time=0,
-            message_ids=[receipt_handle],
-        )
-
     async def get_info(self):
         total = await self.client.xlen(self.queue)
         pending = await self.client.xpending(self.queue, self.group)

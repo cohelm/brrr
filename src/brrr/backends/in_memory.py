@@ -42,9 +42,6 @@ class InMemoryQueue(Queue):
             num_inflight_messages=0,
         )
 
-    async def set_message_timeout(self, receipt_handle, seconds):
-        pass
-
 
 def _key2str(key: MemKey) -> str:
     return f"{key.type}/{key.id}"
