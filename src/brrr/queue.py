@@ -55,14 +55,3 @@ class Queue(ABC):
     async def get_message(self) -> Message: ...
     @abstractmethod
     async def get_info(self) -> QueueInfo: ...
-
-
-class RichQueue(Queue):
-    # Max number of jobs that can be processed concurrently
-    max_concurrency: int
-
-    # Every job requires a token from the pool to be dequeued
-    rate_limit_pool_capacity: int
-
-    # The number of tokens restored to the pool per second
-    replenish_rate_per_second: float
