@@ -16,7 +16,7 @@ from aiohttp import web
 import redis.asyncio as redis
 from types_aiobotocore_dynamodb import DynamoDBClient
 
-from brrr.backends.redis import RedisStream
+from brrr.backends.redis import RedisQueue
 from brrr.backends.dynamo import DynamoDbMemStore
 import brrr
 from brrr import task
@@ -99,10 +99,10 @@ async def with_resources() -> AsyncIterator[tuple[redis.Redis, DynamoDBClient]]:
 
 
 @asynccontextmanager
-async def with_brrr_wrap() -> AsyncIterator[tuple[RedisStream, DynamoDbMemStore]]:
+async def with_brrr_wrap() -> AsyncIterator[tuple[RedisQueue, DynamoDbMemStore]]:
     async with with_resources() as (rc, dync):
         store = DynamoDbMemStore(dync, table_name())
-        queue = RedisStream(rc, os.environ.get("REDIS_QUEUE_KEY", "r1"))
+        queue = RedisQueue(rc, os.environ.get("REDIS_QUEUE_KEY", "r1"))
         yield (queue, store)
 
 
