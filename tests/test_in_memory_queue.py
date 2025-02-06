@@ -7,9 +7,7 @@ from tests.contract_queue import QueueContract
 
 
 class TestInMemoryQueue(QueueContract):
-    throws_closes = True
     has_accurate_info = True
-    deletes_messages = True
 
     @asynccontextmanager
     async def with_queue(self) -> AsyncIterator[Queue]:

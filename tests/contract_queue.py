@@ -8,9 +8,7 @@ from brrr.queue import Queue, QueueIsEmpty
 
 
 class QueueContract(ABC):
-    throws_closes: bool
     has_accurate_info: bool
-    deletes_messages: bool
 
     @abstractmethod
     @asynccontextmanager
