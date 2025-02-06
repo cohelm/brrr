@@ -39,6 +39,3 @@ class ClosableInMemQueue(q.Queue):
     async def put_message(self, body: str):
         assert self.operational
         await self.received.put(body)
-
-    async def get_info(self):
-        raise NotImplementedError()

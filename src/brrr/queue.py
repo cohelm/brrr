@@ -26,7 +26,9 @@ class Message:
 @dataclass
 class QueueInfo:
     """
-    Approximate info about the queue
+    Approximate info about a queue.
+
+    Vestigial and purely  best effort at this point.
     """
 
     num_messages: int
@@ -53,5 +55,3 @@ class Queue(ABC):
     async def put_message(self, body: str): ...
     @abstractmethod
     async def get_message(self) -> Message: ...
-    @abstractmethod
-    async def get_info(self) -> QueueInfo: ...
