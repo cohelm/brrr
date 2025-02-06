@@ -5,7 +5,6 @@ from typing import AsyncIterator
 import pytest
 
 from brrr.queue import Queue, QueueIsEmpty
-from brrr.backends.in_memory import InMemoryQueue
 
 
 class QueueContract(ABC):
@@ -65,13 +64,3 @@ class QueueContract(ABC):
 
             with pytest.raises(QueueIsEmpty):
                 await queue.get_message()
-
-
-class TestInMemoryQueue(QueueContract):
-    throws_closes = True
-    has_accurate_info = True
-    deletes_messages = True
-
-    @asynccontextmanager
-    async def with_queue(self) -> AsyncIterator[Queue]:
-        yield InMemoryQueue()
