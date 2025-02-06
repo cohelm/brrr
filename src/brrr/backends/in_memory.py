@@ -30,10 +30,7 @@ class InMemoryQueue(Queue):
         return Message(self.messages.popleft())
 
     async def get_info(self):
-        return QueueInfo(
-            num_messages=len(self.messages),
-            num_inflight_messages=0,
-        )
+        return QueueInfo(num_messages=len(self.messages))
 
 
 def _key2str(key: MemKey) -> str:

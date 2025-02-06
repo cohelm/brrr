@@ -30,7 +30,6 @@ class QueueInfo:
     """
 
     num_messages: int
-    num_inflight_messages: int
 
 
 # Infra abstractions

@@ -184,11 +184,7 @@ class RedisStream(RichQueue, Cache):
 
     async def get_info(self):
         total = await self.client.xlen(self.queue)
-        pending = await self.client.xpending(self.queue, self.group)
-        return QueueInfo(
-            num_messages=total,
-            num_inflight_messages=pending["pending"],
-        )
+        return QueueInfo(num_messages=total)
 
     async def incr(self, key: str) -> int:
         return await self.client.incr(key)
