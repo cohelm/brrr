@@ -69,8 +69,9 @@ async def schedule_task(request: web.BaseRequest):
 
 
 @asynccontextmanager
-async def with_redis() -> AsyncIterator[redis.Redis]:
-    redurl = os.environ.get("BRRR_DEMO_REDIS_URL")
+async def with_redis(
+    redurl: str | None = os.environ.get("BRRR_DEMO_REDIS_URL"),
+) -> AsyncIterator[redis.Redis]:
     rkwargs = dict(
         decode_responses=True,
         health_check_interval=10,
