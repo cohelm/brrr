@@ -100,7 +100,12 @@ async def test_codec_api():
         any_order=True,
     )
     assert codec.encode_call.call_count == 5
-    assert codec.invoke_task.call_count == 5 + 4
+
+    # The “name” argument to invoke_task is easiest to test.
+    assert Counter(foo=5, plus=4) == Counter(
+        map(lambda c: c[0][1], codec.invoke_task.call_args_list)
+    )
+
     for c in codec.decode_return.call_args_list:
         ret = pickle.loads(c[0][0])
         # I don’t want to hard-code too much of the implementation in the test

@@ -219,7 +219,7 @@ class Brrr:
         Evaluate a frame, which means calling the tasks function with its arguments
         """
         task = self.tasks[task_name]
-        return await self._codec.invoke_task(memo_key, task.fn, payload)
+        return await self._codec.invoke_task(memo_key, task.name, task.fn, payload)
 
     def register_task(self, fn: AsyncFunc, name: str = None) -> Task:
         task = Task(self, fn, name)

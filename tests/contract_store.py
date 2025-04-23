@@ -185,7 +185,7 @@ class MemoryContract(ByteStoreContract):
                 assert a == 1
                 assert b == 2
 
-            await memory.codec.invoke_task(call.memo_key, task, payload)
+            await memory.codec.invoke_task(call.memo_key, "name", task, payload)
             assert called
 
     async def test_value(self):

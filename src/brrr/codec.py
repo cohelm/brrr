@@ -29,7 +29,9 @@ class Codec(ABC):
         raise NotImplementedError()
 
     @abstractmethod
-    async def invoke_task(self, memo_key: str, handler, payload: bytes) -> bytes:
+    async def invoke_task(
+        self, memo_key: str, name: str, handler, payload: bytes
+    ) -> bytes:
         raise NotImplementedError()
 
     @abstractmethod

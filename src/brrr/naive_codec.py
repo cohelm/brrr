@@ -44,7 +44,9 @@ class PickleCodec(Codec):
     def encode_call(self, call: ArgsKwargsCall) -> bytes:
         return pickle.dumps((call.args, call.kwargs))
 
-    async def invoke_task(self, memo_key: str, handler, payload: bytes) -> bytes:
+    async def invoke_task(
+        self, memo_key: str, name: str, handler, payload: bytes
+    ) -> bytes:
         args, kwargs = pickle.loads(payload)
         return pickle.dumps(await handler(*args, **kwargs))
 
