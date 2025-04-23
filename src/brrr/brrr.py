@@ -8,10 +8,10 @@ import logging
 from typing import Any, Union
 from uuid import uuid4
 
+from .call import Call
 from .store import (
     AlreadyExists,
     Cache,
-    Call,
     Codec,
     Memory,
     Store,
@@ -210,15 +210,16 @@ class Brrr:
         Returns the value of a task, or raises a KeyError if it's not present in the store
         """
         call = self.memory.make_call(task_name, args, kwargs)
-        return await self.memory.get_value(call)
+        encoded_val = await self.memory.get_value(call)
+        return self._codec.decode_return(encoded_val)
 
     @requires_setup
-    async def evaluate(self, call: Call) -> Any:
+    async def _call_task(self, task_name: str, memo_key: str, payload: bytes) -> Any:
         """
         Evaluate a frame, which means calling the tasks function with its arguments
         """
-        task = self.tasks[call.task_name]
-        return await task.evaluate(call.args, call.kwargs)
+        task = self.tasks[task_name]
+        return await self._codec.invoke_task(memo_key, task.fn, payload)
 
     def register_task(self, fn: AsyncFunc, name: str = None) -> Task:
         task = Task(self, fn, name)
@@ -262,9 +263,11 @@ class Task:
             return await self.evaluate(args, kwargs)
         call = self.brrr.memory.make_call(self.name, args, kwargs)
         try:
-            return await self.brrr.memory.get_value(call)
+            encoded_val = await self.brrr.memory.get_value(call)
         except KeyError:
             raise Defer([call])
+        else:
+            return self.brrr._codec.decode_return(encoded_val)
 
     def to_lambda(self, *args, **kwargs):
         """
@@ -326,16 +329,16 @@ class Wrrrker:
 
     async def _handle_msg(self, my_call_id: str):
         root_id, my_memo_key = self._parse_call_id(my_call_id)
-        me = await self.brrr.memory.get_call(my_memo_key)
+        task_name, payload = await self.brrr.memory.get_call_bytes(my_memo_key)
 
-        logger.debug(f"Calling {me}")
+        logger.debug(f"Calling {task_name}")
         try:
-            value = await self.brrr.evaluate(me)
+            encoded_ret = await self.brrr._call_task(task_name, my_memo_key, payload)
         except Defer as defer:
             logger.debug(
                 "Deferring %s %s: %d missing calls",
                 my_call_id,
-                me,
+                task_name,
                 len(defer.calls),
             )
             # This is very ugly but I want to keep the contract of throwing
@@ -361,12 +364,12 @@ class Wrrrker:
                 raise spawn_limit_err from defer
             return
 
-        logger.info("Resolved %s %s", my_call_id, me)
+        logger.info("Resolved %s %s", my_call_id, task_name)
 
         # We can end up in a race against another worker to write the value.  We
         # only accept the first entry and the rest will be ignored.
         try:
-            await self.brrr.memory.set_value(me, value)
+            await self.brrr.memory.set_value(my_memo_key, encoded_ret)
         except AlreadyExists:
             pass
 
