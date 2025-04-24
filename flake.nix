@@ -213,15 +213,19 @@
               }
             ];
           };
-          default = let
+          python = let
             editableOverlay = uvWorkspace.mkEditablePyprojectOverlay {
               # Set by devshell
-              root = "$PRJ_ROOT/python";
+              root = "$REPO_ROOT/python";
             };
             editablePythonSet = pythonSet.overrideScope editableOverlay;
             virtualenv = editablePythonSet.mkVirtualEnv "brrr-dev-env" uvWorkspace.deps.all;
           in {
             env = [
+              {
+                name = "REPO_ROOT";
+                eval = "$(git rev-parse --show-toplevel)";
+              }
               {
                 name = "PYTHONPATH";
                 unset = true;
