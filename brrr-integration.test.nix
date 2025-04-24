@@ -51,7 +51,7 @@ pkgs.testers.runNixOSTest {
         BRRR_TEST_REDIS_URL = "redis://datastores:6379";
       };
       text = ''
-        pytest ${self}
+        pytest ${self.packages.${pkgs.system}.brrr.src}
       '';
     };
   in {

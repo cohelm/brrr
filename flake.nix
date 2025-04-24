@@ -92,7 +92,7 @@
     };
     perSystem = { config, self', inputs', pkgs, lib, system, ... }: let
       uvWorkspace = inputs.uv2nix.lib.workspace.loadWorkspace {
-        workspaceRoot = ./.;
+        workspaceRoot = ./python;
       };
       uvOverlay = uvWorkspace.mkPyprojectOverlay {
         sourcePreference = "wheel";
@@ -173,7 +173,7 @@
           pytestUnit = pkgs.stdenvNoCC.mkDerivation {
             name = "pytest";
             nativeBuildInputs = [ self'.packages.dev ];
-            src = lib.cleanSource ./.;
+            src = lib.cleanSource ./python;
             buildPhase = ''
               pytest -m "not dependencies"
             '';
@@ -184,7 +184,7 @@
           ruff = pkgs.stdenvNoCC.mkDerivation {
             name = "ruff";
             nativeBuildInputs = [ self'.packages.dev ];
-            src = lib.cleanSource ./.;
+            src = lib.cleanSource ./python;
             buildPhase = ''
               ruff check
               ruff format --check
@@ -216,7 +216,7 @@
           default = let
             editableOverlay = uvWorkspace.mkEditablePyprojectOverlay {
               # Set by devshell
-              root = "$PRJ_ROOT";
+              root = "$PRJ_ROOT/python";
             };
             editablePythonSet = pythonSet.overrideScope editableOverlay;
             virtualenv = editablePythonSet.mkVirtualEnv "brrr-dev-env" uvWorkspace.deps.all;
