@@ -3,15 +3,14 @@ name = "brrr"
 version = "0.1.0b2.dev"
 description = "Horizontally scalable workflow scheduling with pluggable backends"
 authors = [
-    {name = "Robin", email = "robin.lewis@anterior.com"},
-    {name = "Jesse Zwaan", email = "j.k.zwaan@gmail.com"},
+    { name = "Robin", email = "robin.lewis@anterior.com" },
+    { name = "Jesse Zwaan", email = "j.k.zwaan@gmail.com" },
 ]
-readme = "README.md"
 requires-python = "<4,>=3.12"
 dependencies = []
 
 [project.urls]
-homepage = "https://github.com/nobssoftware/brrr"
+homepage = "https://github.com/cohelm/brrr"
 
 [dependency-groups]
 dev = [
@@ -33,6 +32,4 @@ build-backend = "hatchling.build"
 [tool.pytest.ini_options]
 asyncio_mode = "auto"
 timeout = 10
-markers = [
-    "dependencies: requires external store / queue dependencies running"
-]
+markers = ["dependencies: requires external store / queue dependencies running"]
