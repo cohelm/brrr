@@ -41,7 +41,9 @@ class PickleCodec(Codec):
             task_name=task_name, args=args, kwargs=kwargs, memo_key=memo_key
         )
 
-    def encode_call(self, call: ArgsKwargsCall) -> bytes:
+    def encode_call(self, call: Call) -> bytes:
+        if not isinstance(call, ArgsKwargsCall):
+            raise ValueError("encode_call only accept ArgsKwargsCall")
         return pickle.dumps((call.args, call.kwargs))
 
     async def invoke_task(
