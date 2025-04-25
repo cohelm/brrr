@@ -16,6 +16,15 @@ N.B.: That last point means that you can use Brrr with SQS & DynamoDB to scale b
 
 There are currently implementations for Redis as a queue, and for DynamoDB as a database.
 
+## Development
+
+Brrr is a protocol that can be implemented in many languages. "It's just bytes on the wire."
+
+This is a monorepo with a Python implementation at the moment, but intends to add more languages.
+
+The Nix flake provides a devshell for Python -- `$ nix develop .#python` --
+which is used for development and testing.
+
 ## Python Library
 
 Brrr is a dependency-free Python uv bundle which you can import and use directly.

@@ -94,8 +94,8 @@ async def with_redis(
 @asynccontextmanager
 async def with_resources() -> AsyncIterator[tuple[redis.Redis, DynamoDBClient]]:
     async with with_redis() as rc:
+        dync: DynamoDBClient
         async with aioboto3.Session().client("dynamodb") as dync:
-            dync: DynamoDBClient
             yield (rc, dync)
 
 
