@@ -5,7 +5,7 @@ from typing import AsyncIterable
 
 import pytest
 
-from brrr.codec import PickleCodec
+from brrr.naive_codec import PickleCodec
 from brrr.store import (
     AlreadyExists,
     CompareMismatch,
@@ -165,26 +165,42 @@ class MemoryContract(ByteStoreContract):
                 await memory.set_call("foo")
 
             with pytest.raises(KeyError):
-                await memory.get_call("non-existent")
+                await memory.get_call_bytes("non-existent")
 
             call = memory.make_call("task", ("arg-1", "arg-2"), {"a": 1, "b": 2})
             assert not await memory.has_call(call)
 
             await memory.set_call(call)
             assert await memory.has_call(call)
-            assert await memory.get_call(call.memo_key) == call
+            task_name, payload = await memory.get_call_bytes(call.memo_key)
+            assert task_name == "task"
+
+            called = False
+
+            async def task(x, y, b, a):
+                nonlocal called
+                called = True
+                assert x == "arg-1"
+                assert y == "arg-2"
+                assert a == 1
+                assert b == 2
+
+            await memory.codec.invoke_task(call.memo_key, "name", task, payload)
+            assert called
 
     async def test_value(self):
         async with self.with_memory() as memory:
             call = memory.make_call("task", (), {})
             assert not await memory.has_value(call)
 
-            await memory.set_value(call, {"test": 1})
+            await memory.set_value(call.memo_key, b"123")
             assert await memory.has_value(call)
-            assert await memory.get_value(call) == {"test": 1}
+            assert await memory.get_value(call) == b"123"
 
             with pytest.raises(AlreadyExists):
-                await memory.set_value(call, {"test": 2})
+                await memory.set_value(call.memo_key, b"456")
+
+            assert await memory.get_value(call) == b"123"
 
     async def test_pending_returns(self):
         async with self.with_memory() as memory:

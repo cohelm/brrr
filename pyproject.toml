@@ -1,6 +1,6 @@
 [project]
 name = "brrr"
-version = "0.1.0b2.dev"
+version = "0.1.0b2"
 description = "Horizontally scalable workflow scheduling with pluggable backends"
 authors = [
     {name = "Robin", email = "robin.lewis@anterior.com"},

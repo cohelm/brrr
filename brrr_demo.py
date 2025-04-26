@@ -20,7 +20,7 @@ from brrr.backends.redis import RedisQueue
 from brrr.backends.dynamo import DynamoDbMemStore
 import brrr
 from brrr import task
-from brrr.codec import PickleCodec
+from brrr.naive_codec import PickleCodec
 
 logger = logging.getLogger(__name__)
 routes = web.RouteTableDef()

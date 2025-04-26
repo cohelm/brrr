@@ -175,7 +175,7 @@ wheels = [
 
 [[package]]
 name = "brrr"
-version = "0.1.0b2.dev0"
+version = "0.1.0b2"
 source = { editable = "." }
 
 [package.dev-dependencies]

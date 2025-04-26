@@ -1,9 +1,9 @@
 from __future__ import annotations
 
 from abc import abstractmethod, ABC
-import hashlib
-import pickle
 from typing import Any
+
+from brrr.call import Call
 
 
 class Codec(ABC):
@@ -21,73 +21,19 @@ class Codec(ABC):
     """
 
     @abstractmethod
-    def hash_call(self, task_name: str, args: tuple, kwargs: dict) -> str:
-        """Create a unique, deterministic identifier for this task invocation.
-
-        The reference implementation is using sha256 on a the name, a naive
-        serialization of the args, and on the sorted dictionary with a naive
-        serialization of its values.  For correct operation of Brrr, this call
-        must always return exactly the same output for the same input, so your
-        best bet is to be strict here and define an explicit hash which don't
-        rely on possibly non-deterministic serialization of data structures
-        (e.g. str(dict) could be dependent on insertion order, or python
-        version, etc).
-
-        Pay close attention to this routine when you work cross language: while
-        it makes little sense for different languages to support serving the
-        same calls, they must all correctly and deterministically and
-        identically hash the same invocation to the same output hash.  So if you
-        want to call, say, a task served by Go, from a worker (or other code) in
-        Python, they must both agree on what the input arguments to that call
-        would look like for the environment, and derive the same hash from it.
-
-        """
+    def create_call(self, task_name: str, args: tuple, kwargs: dict) -> Call:
         raise NotImplementedError()
 
     @abstractmethod
-    def encode_args(self, args: tuple, kwargs: dict) -> bytes:
+    def encode_call(self, call: Call) -> bytes:
         raise NotImplementedError()
 
     @abstractmethod
-    def decode_args(self, payload: bytes) -> tuple[tuple, dict]:
-        raise NotImplementedError()
-
-    @abstractmethod
-    def encode_return(self, val: Any) -> bytes:
+    async def invoke_task(
+        self, memo_key: str, name: str, handler, payload: bytes
+    ) -> bytes:
         raise NotImplementedError()
 
     @abstractmethod
     def decode_return(self, payload: bytes) -> Any:
         raise NotImplementedError()
-
-
-class PickleCodec(Codec):
-    """Very liberal codec, based on hopes and dreams.
-
-    Don't use this in production because you run the risk of non-deterministic
-    serialization, e.g. dicts with arbitrary order.
-
-    """
-
-    def encode(self, val: Any) -> bytes:
-        return pickle.dumps(val)
-
-    def decode(self, b: bytes) -> Any:
-        return pickle.loads(b)
-
-    def hash_call(self, task_name: str, args: tuple, kwargs: dict) -> str:
-        h = hashlib.new("sha256")
-        h.update(repr([task_name, args, list(sorted(kwargs.items()))]).encode())
-        return h.hexdigest()
-
-    def encode_args(self, args: tuple, kwargs: dict) -> bytes:
-        return pickle.dumps((args, kwargs))
-
-    def decode_args(self, payload: bytes) -> tuple[tuple, dict]:
-        return pickle.loads(payload)
-
-    def encode_return(self, val: Any) -> bytes:
-        return pickle.dumps(val)
-
-    def decode_return(self, payload: bytes) -> Any:
-        return pickle.loads(payload)
