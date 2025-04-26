@@ -286,9 +286,7 @@ class Task:
             else arg
             for arg in args
         ]
-        return await self.brrr.gather(
-            *(self(*argv[0], **argv[1]) for argv in argvs)
-        )
+        return await self.brrr.gather(*(self(*argv[0], **argv[1]) for argv in argvs))
 
     # I think /technically/ the async + await here cancel each other out and you
     # could do without either, but there are so many gotchas around it and
