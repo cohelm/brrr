@@ -91,27 +91,19 @@
       };
     };
     perSystem = { config, self', inputs', pkgs, lib, system, ... }: let
-      uvWorkspace = inputs.uv2nix.lib.workspace.loadWorkspace {
-        workspaceRoot = ./python;
-      };
-      uvOverlay = uvWorkspace.mkPyprojectOverlay {
-        sourcePreference = "wheel";
-      };
       python = pkgs.python312;
-      pythonSet = (pkgs.callPackage inputs.pyproject-nix.build.packages {
-        inherit python;
-      }).overrideScope (
-        lib.composeManyExtensions [
-          inputs.pyproject-build-systems.overlays.default
-          uvOverlay
-        ]
-      );
       devPackages = [
         pkgs.process-compose
         pkgs.redis # For the CLI
-        self'.packages.python
         self'.packages.uv
       ];
+      brrrpy = pkgs.callPackage ./python/package.nix {
+        inherit (inputs)
+          pyproject-build-systems
+          pyproject-nix
+          uv2nix;
+        inherit python;
+      };
     in {
       config = {
         _module.args.pkgs = import inputs.nixpkgs {
@@ -140,17 +132,8 @@
         packages = {
           inherit python;
           inherit (pkgs) uv;
-          # As far as I understand pyprojectnix and uv2nix, you want to use
-          # virtual envs even for prod-level final derivations because a
-          # virtualenv includes all the dependencies and a python which knows
-          # how to find them.
-          default = pythonSet.mkVirtualEnv "brrr-env" uvWorkspace.deps.default;
-          # A virtual env with all optional dependencies installed for demo &
-          # tests.
-          dev = pythonSet.mkVirtualEnv "brrr-dev-env" uvWorkspace.deps.all;
-          # Bare package without any env setup for other packages to include as
-          # a lib (again: I think?)
-          brrr = pythonSet.brrr;
+          inherit (brrrpy) brrr brrr-venv-test;
+          default = brrrpy.brrr-venv;
           # Stand-alone brrr_demo.py script
           brrr-demo = pkgs.stdenvNoCC.mkDerivation {
             name = "brrr-demo.py";
@@ -160,8 +143,7 @@
               cp ${./brrr_demo.py} $out/bin/brrr_demo.py
             '';
             buildInputs = [
-              # Dependencies for the demo are marked as ‘dev’
-              self'.packages.dev
+              brrrpy.brrr-venv-test
             ];
             # The patch phase will automatically use the python from the venv as
             # the interpreter for the demo script.
@@ -178,7 +160,7 @@
         checks = {
           pytestUnit = pkgs.stdenvNoCC.mkDerivation {
             name = "pytest";
-            nativeBuildInputs = [ self'.packages.dev ];
+            nativeBuildInputs = [ brrrpy.brrr-venv-test ];
             src = lib.cleanSource ./python;
             buildPhase = ''
               pytest -m "not dependencies"
@@ -189,7 +171,7 @@
           };
           ruff = pkgs.stdenvNoCC.mkDerivation {
             name = "ruff";
-            nativeBuildInputs = [ self'.packages.dev ];
+            nativeBuildInputs = [ brrrpy.brrr-venv-test ];
             src = lib.cleanSource ./python;
             buildPhase = ''
               ruff check
@@ -204,7 +186,9 @@
         };
         devshells = {
           default = {
-            packages = devPackages;
+            packages = devPackages ++ [
+              self'.packages.python
+            ];
             motd = ''
               This is the generic devshell for brrr development.  Use this to fix
               problems in the Python lockfile and to access generic tooling.
@@ -225,14 +209,7 @@
               }
             ];
           };
-          python = let
-            editableOverlay = uvWorkspace.mkEditablePyprojectOverlay {
-              # Set by devshell
-              root = "$REPO_ROOT/python";
-            };
-            editablePythonSet = pythonSet.overrideScope editableOverlay;
-            virtualenv = editablePythonSet.mkVirtualEnv "brrr-dev-env" uvWorkspace.deps.all;
-          in {
+          python = {
             env = [
               {
                 name = "REPO_ROOT";
@@ -252,7 +229,7 @@
               }
             ];
             packages = devPackages ++ [
-              virtualenv
+              brrrpy.brrr-venv-editable
             ];
             commands = [
               {

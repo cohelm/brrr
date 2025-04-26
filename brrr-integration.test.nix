@@ -41,7 +41,7 @@ pkgs.testers.runNixOSTest {
     test-brrr = pkgs.writeShellApplication {
       name = "test-brrr";
       runtimeInputs = [
-        self.packages.${pkgs.system}.dev
+        self.packages.${pkgs.system}.brrr-venv-test
       ];
       runtimeEnv = {
         AWS_DEFAULT_REGION = "fake";
