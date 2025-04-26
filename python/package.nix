@@ -27,7 +27,19 @@ let
     # Set by devshell
     root = "$REPO_ROOT/python";
   };
-  editablePythonSet = pythonSet.overrideScope editableOverlay;
+  editablePythonSet = pythonSet.overrideScope (
+    lib.composeManyExtensions [
+      editableOverlay
+      (final: prev: {
+        brrr = prev.brrr.overrideAttrs (old: {
+          src = lib.cleanSource ./.;
+          nativeBuildInputs = old.nativeBuildInputs or [] ++ final.resolveBuildSystem {
+            editables = [];
+          };
+        });
+      })
+    ]
+  );
 in
 {
   brrr = pythonSet.brrr;
