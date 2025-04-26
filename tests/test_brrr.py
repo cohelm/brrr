@@ -29,6 +29,69 @@ async def test_no_brrr_map(handle_nobrrr):
     assert await handle_nobrrr.map([[3], [4]]) == [6, 10]
 
 
+async def test_gather():
+    b = Brrr()
+
+    @b.register_task
+    async def foo(a: int) -> int:
+        return a * 2
+
+    assert await b.gather(foo(3), foo(4)) == [6, 8]
+
+
+async def _call_nested_gather(*, use_brrr_gather: bool):
+    """
+    Helper function to test that brrr.gather runs all brrr tasks in parallel,
+    in contrast with how asyncio.gather only runs one at a time.
+    """
+    b = Brrr()
+    calls = []
+    store = InMemoryByteStore()
+    queue = ClosableInMemQueue()
+
+    @b.register_task
+    async def foo(a: int) -> int:
+        calls.append(f"foo({a})")
+        return a * 2
+
+    @b.register_task
+    async def bar(a: int) -> int:
+        calls.append(f"bar({a})")
+        return a - 1
+
+    async def baz(a: int) -> int:
+        b = await foo(a)
+        return await bar(b)
+
+    @b.register_task
+    async def top(xs: list[int]) -> list[int]:
+        if use_brrr_gather:
+            result = await b.gather(*[baz(x) for x in xs])
+        else:
+            result = await asyncio.gather(*[baz(x) for x in xs])
+        # with b.gather, `top` is called twice after its dependencies are done,
+        # but we can only close the queue once
+        if not queue.closing:
+            await queue.close()
+        return result
+
+    b.setup(queue, store, store, PickleCodec())
+    await b.schedule("top", ([3, 4],), {})
+    await b.wrrrk()
+    await queue.join()
+    return calls
+
+
+async def test_brrr_gather():
+    brrr_calls = await _call_nested_gather(use_brrr_gather=True)
+    assert brrr_calls == ["foo(3)", "foo(4)", "bar(6)", "bar(8)"]
+
+
+async def test_asyncio_gather():
+    asyncio_calls = await _call_nested_gather(use_brrr_gather=False)
+    assert asyncio_calls == ["foo(3)", "bar(6)", "foo(4)", "bar(8)"]
+
+
 async def test_nop_closed_queue():
     b = Brrr()
     store = InMemoryByteStore()
