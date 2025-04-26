@@ -106,6 +106,12 @@
           uvOverlay
         ]
       );
+      devPackages = [
+        pkgs.process-compose
+        pkgs.redis # For the CLI
+        self'.packages.python
+        self'.packages.uv
+      ];
     in {
       config = {
         _module.args.pkgs = import inputs.nixpkgs {
@@ -197,11 +203,17 @@
           demoNixosTest = pkgs.callPackage ./brrr-demo.test.nix { inherit self; };
         };
         devshells = {
-          impure = {
-            packages = with self'.packages; [
-              python
-              uv
-            ];
+          default = {
+            packages = devPackages;
+            motd = ''
+              This is the generic devshell for brrr development.  Use this to fix
+              problems in the Python lockfile and to access generic tooling.
+
+              Available tools:
+            '' + lib.concatLines (map (x: "  - ${x.pname or x.name}") devPackages) + ''
+
+              For Python-specific development, use: nix develop .#python
+            '';
             env = [
               {
                 name = "PYTHONPATH";
@@ -239,12 +251,8 @@
                 value = "1";
               }
             ];
-            packages = [
-              pkgs.process-compose
-              self'.packages.uv
-              self'.packages.brrr-demo
+            packages = devPackages ++ [
               virtualenv
-              pkgs.redis # For the CLI
             ];
             commands = [
               {

@@ -1,6 +1,6 @@
 # Brrr: high performance workflow scheduling
 
-Brrr is a POC for ultra high performance workflow scheduling.
+Brrr is a POC for ultra scalable workflow scheduling.
 
 Differences between Brrr and other workflow schedulers:
 
@@ -9,12 +9,39 @@ Differences between Brrr and other workflow schedulers:
 - Brrr **requires idempotency** of the call graph.  It’s ok if your tasks return a different result per call, but the sub tasks they spin up must always be exactly the same, with the same inputs.
 - Brrr tasks **look sequential & blocking**.  Your Python code looks like a simple linear function.
 - Brrr tasks **aren’t actually blocking** which means you don’t need to lock up RAM in your fleet equivalent to the entire call graph’s execution stack.  In other words: A Brrr fleet’s memory usage is *O(fleet)*, not *O(call graph)*.
-- Brrr offers **no logging, monitoring, error handling, or tracing**.  Brrr does one thing and one thing only: workflow scheduling.  Bring your own logging.
+- Brrr offers **no logging, monitoring, error handling, or tracing**.  Brrr does one thing and one thing only: workflow scheduling.  Bring Your Own Logging.
 - Brrr has **no agent**.  Every worker connects directly to the underlying queue, jobs are scheduled by directly sending them to the queue.  This allows *massive parallelism*: your only limit is your queue & DB capacity.
+- Brrr makes **no encoding choices**: the only datatype seen by Brrr is "array of bytes".  You must Bring Your Own Encoder.
 
 N.B.: That last point means that you can use Brrr with SQS & DynamoDB to scale basically as far as your wallet can stretch without any further config.
 
-There are currently implementations for Redis as a queue, and for DynamoDB as a database.
+To summarize, these elements are not provided, and you must Bring Your Own:
+
+- queue
+- KV store
+- logging
+- tracing
+- encoding
+
+Brrr is a protocol that can be implemented in many languages. "It's just bytes on the wire."
+
+## Development
+
+There is currently only one SDK implementation: Python, async.
+
+A Nix devshell is provided for Python which can be used for development and testing:
+
+```
+$ nix develop .#python
+```
+
+It uses [uv2nix](https://github.com/pyproject-nix/uv2nix) to parse the uv.lock file into a full-blown Nix managed development environment.
+
+A generic Nix devshell is provided with some tools on the path but without uv2nix, for managing the Python packages or fixing uv if the lock file breaks somehow (e.g. git conflicts):
+
+```
+$ nix develop
+```
 
 ## Python Library
 
@@ -25,22 +52,22 @@ Look at the [`brrr_demo.py`](brrr_demo.py) file for a full demo.
 Highlights:
 
 ```py
-from brrr import task
+import brrr
 
-@task
+@brrr.task
 async def fib(n: int, salt=None):
     match n:
         case 0: return 0
         case 1: return 1
         case _: return sum(await fib.map([[n - 2, salt], [n - 1, salt]]))
 
-@task
+@brrr.task
 async def fib_and_print(n: str):
     f = await fib(int(n))
     print(f"fib({n}) = {f}", flush=True)
     return f
 
-@task
+@brrr.task
 async def hello(greetee: str):
     greeting = f"Hello, {greetee}!"
     print(greeting, flush=True)
