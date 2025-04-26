@@ -183,6 +183,31 @@
           };
           pytestIntegration = pkgs.callPackage ./brrr-integration.test.nix { inherit self; };
           demoNixosTest = pkgs.callPackage ./brrr-demo.test.nix { inherit self; };
+          uvlock = pkgs.stdenvNoCC.mkDerivation {
+            name = "uv-lock-synced";
+            env = {
+              UV_NO_MANAGED_PYTHON = "true";
+              UV_SYSTEM_PYTHON = "true";
+            };
+            src = with lib.fileset; toSource {
+              root = ./python;
+              fileset = unions [
+                ./python/pyproject.toml
+                ./python/uv.lock
+              ];
+            };
+            nativeBuildInputs = [
+              self'.packages.uv
+              self'.packages.python
+              pkgs.writableTmpDirAsHomeHook
+            ];
+            buildPhase = ''
+              uv lock --locked
+            '';
+            installPhase = ''
+              touch $out
+            '';
+          };
         };
         devshells = {
           default = {
