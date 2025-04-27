@@ -161,6 +161,9 @@
               # the interpreter for the demo script.
               meta.mainProgram = "brrr_demo.py";
             };
+            # Best-effort package for convenience, zero guarantees, could
+            # disappear at any time.
+            nix-flake-check-changed = pkgs.callPackage ./nix-flake-check-changed/package.nix {};
           };
           checks = {
             pytestIntegration = pkgs.callPackage ./nix/brrr-integration.test.nix { inherit self; };
