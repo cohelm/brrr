@@ -58,9 +58,9 @@
         # demo environment, or just the dependencies if you want to run a server
         # manually.
         processComposeModules = {
-          brrr-demo = inputs.services-flake.lib.multiService ./brrr-demo.service.nix;
-          dynamodb = import ./dynamodb.service.nix;
-          localstack = import ./localstack.service.nix;
+          brrr-demo = inputs.services-flake.lib.multiService ./nix/brrr-demo.service.nix;
+          dynamodb = import ./nix/dynamodb.service.nix;
+          localstack = import ./nix/localstack.service.nix;
            default = { pkgs, ... }: {
             imports = with self.processComposeModules; [
               brrr-demo
@@ -94,7 +94,7 @@
         };
         # WIP, exporting is best effort.
         nixosModules = {
-          brrr-demo = import ./brrr-demo.module.nix;
+          brrr-demo = import ./nix/brrr-demo.module.nix;
         };
       };
       perSystem = { config, self', inputs', pkgs, lib, system, ... }: let
@@ -158,8 +158,8 @@
             };
           };
           checks = {
-            pytestIntegration = pkgs.callPackage ./brrr-integration.test.nix { inherit self; };
-            demoNixosTest = pkgs.callPackage ./brrr-demo.test.nix { inherit self; };
+            pytestIntegration = pkgs.callPackage ./nix/brrr-integration.test.nix { inherit self; };
+            demoNixosTest = pkgs.callPackage ./nix/brrr-demo.test.nix { inherit self; };
           } // brrrpy.brrr.tests;
           devshells = {
             default = {
