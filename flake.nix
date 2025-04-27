@@ -208,7 +208,7 @@
               touch $out
             '';
           };
-        };
+        } // brrrpy.brrr.tests;
         devshells = {
           default = {
             packages = devPackages ++ [
