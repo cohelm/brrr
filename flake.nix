@@ -278,8 +278,8 @@
                 in ''
                   (
                     set -o pipefail
-                    if nix build --no-link --print-out-paths .#packages.aarch64-linux.docker | xargs cat | docker load; then
-                      echo 'Start a new worker with `docker run ${drv.imageName}:${drv.imageTag}`'
+                    if nix build --no-link --print-out-paths .#packages.aarch64-linux.docker | xargs -r docker load -i; then
+                      echo 'Start a new worker with `docker run <image name>`'
                     fi
                   )
                 '';
