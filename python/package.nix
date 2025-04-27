@@ -70,6 +70,7 @@ let
               };
               uvlock = stdenvNoCC.mkDerivation {
                 name = "uv-lock-synced";
+                # https://github.com/astral-sh/uv/issues/8635#issuecomment-2759670742
                 env = {
                   UV_NO_MANAGED_PYTHON = "true";
                   UV_SYSTEM_PYTHON = "true";
