@@ -40,6 +40,7 @@
   };
 
   outputs = { self, flake-parts, ... }@inputs: let
+    checkBuildAll = import ./nix/check-build-all.nix;
     # flake.parts module for linux systems
     brrrLinux = {
       perSystem = { config, lib, pkgs, self', ... }: lib.mkIf pkgs.stdenv.isLinux {
@@ -53,6 +54,10 @@
     # flake.parts module for any system
     brrrAllSystems = {
       flake = {
+        # Expose for reuse.  Name and availability subject to change.
+        flakeModules = {
+          inherit checkBuildAll;
+        };
         # A reusable process-compose module (for flake-parts) with either a full
 
         # demo environment, or just the dependencies if you want to run a server
@@ -279,6 +284,7 @@
       inputs.devshell.flakeModule
       brrrLinux
       brrrAllSystems
+      checkBuildAll
     ];
   };
 }
