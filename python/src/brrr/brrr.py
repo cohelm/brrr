@@ -5,7 +5,7 @@ import base64
 from collections.abc import Awaitable, Callable, Sequence
 import functools
 import logging
-from typing import Any, Union
+from typing import Any
 from uuid import uuid4
 
 from .call import Call
@@ -46,6 +46,7 @@ class Brrr:
     All state for brrr to function wrapped in a container.
     """
 
+    @staticmethod
     def requires_setup(method):
         def wrapper(self, *args, **kwargs):
             if self.queue is None or self.memory is None or self.cache is None:
@@ -58,18 +59,18 @@ class Brrr:
     # local global variable to indicate that it is a worker thread, which, for
     # tasks, means that their Defer raises will be caught and handled by the
     # worker
-    worker_singleton: Union[Wrrrker, None]
+    worker_singleton: Wrrrker | None
 
     # Non-critical, non-persistent information.  Still figuring out if it makes
     # sense to have this dichotomy supported so explicitly at the top-level of
     # the API.  We run the risk of somehow letting semantically important
     # information seep into this cache, and suddenly it is effectively just part
     # of memory again, at which point what’s the split for?
-    cache: Cache | None
+    cache: Cache
     # A storage backend for calls, values and pending returns
-    memory: Memory | None
+    memory: Memory
     # A queue of call keys to be processed
-    queue: Queue | None
+    queue: Queue
 
     # Dictionary of task_name to task instance
     tasks: dict[str, Task]
@@ -221,14 +222,14 @@ class Brrr:
         task = self.tasks[task_name]
         return await self._codec.invoke_task(memo_key, task.name, task.fn, payload)
 
-    def register_task(self, fn: AsyncFunc, name: str = None) -> Task:
+    def register_task(self, fn: AsyncFunc, name: str | None = None) -> Task:
         task = Task(self, fn, name)
         if task.name in self.tasks:
             raise Exception(f"Task {task.name} already exists")
         self.tasks[task.name] = task
         return task
 
-    def task(self, fn: AsyncFunc, name: str = None) -> Task:
+    def task(self, fn: AsyncFunc, name: str | None = None) -> Task:
         return Task(self, fn, name)
 
     async def wrrrk(self):
@@ -251,7 +252,7 @@ class Task:
     name: str
     brrr: Brrr
 
-    def __init__(self, brrr: Brrr, fn: AsyncFunc, name: str = None):
+    def __init__(self, brrr: Brrr, fn: AsyncFunc, name: str | None = None):
         self.brrr = brrr
         self.fn = fn
         self.name = name or fn.__name__
@@ -275,7 +276,7 @@ class Task:
         """
         return lambda: self(*args, **kwargs)
 
-    async def map(self, args: list[Union[dict, list, tuple[tuple, dict]]]):
+    async def map(self, args: list[dict | list | tuple[tuple, dict]]):
         """
         Fanning out, a map function returns the values if they have already been computed.
         Otherwise, it raises a list of Call exceptions to schedule the computation,

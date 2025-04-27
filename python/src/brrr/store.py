@@ -293,13 +293,13 @@ class Memory:
             except KeyError:
                 existing = PendingReturns(None, {new_return})
                 existing_enc = existing.encode()
-                logger.debug(f"    ... none found. Creating new: {existing_enc}")
+                logger.debug(f"    ... none found. Creating new: {existing_enc!r}")
                 # Note the double CAS!
                 await self.store.set_new_value(memkey, existing_enc)
                 adj = "First"
                 verb = "added to"
             else:
-                logger.debug(f"    ... found! {existing_enc}")
+                logger.debug(f"    ... found! {existing_enc!r}")
                 existing = PendingReturns.decode(existing_enc)
                 if new_return not in existing.returns:
                     existing.returns |= {new_return}
@@ -332,7 +332,7 @@ class Memory:
     ) -> AsyncIterator[set[str]]:
         """ """
         memkey = MemKey("pending_returns", memo_key)
-        handled = set()
+        handled: set[str] = set()
         async with self._with_cas():
             try:
                 pending_enc = await self.store.get(memkey)

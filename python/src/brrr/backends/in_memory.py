@@ -16,7 +16,7 @@ class InMemoryQueue(Queue):
     This queue does not do receipts
     """
 
-    messages = collections.deque()
+    messages: collections.deque[str] = collections.deque()
     closed = False
 
     async def put_message(self, body: str):
