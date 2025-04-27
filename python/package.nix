@@ -3,6 +3,8 @@
   callPackage,
   python,
   stdenvNoCC,
+  uv,
+  writableTmpDirAsHomeHook,
 
   pyproject-build-systems,
   uv2nix,
@@ -41,6 +43,54 @@ let
                   runHook preInstall
                   touch $out
                   runHook postInstall
+                '';
+              };
+              pytestUnit = stdenvNoCC.mkDerivation {
+                name = "pytest";
+                nativeBuildInputs = [ brrr-venv-test ];
+                inherit (old) src;
+                buildPhase = ''
+                  pytest -m "not dependencies"
+                '';
+                installPhase = ''
+                  touch $out
+                '';
+              };
+              ruff = stdenvNoCC.mkDerivation {
+                name = "ruff";
+                nativeBuildInputs = [ brrr-venv-test ];
+                inherit (old) src;
+                buildPhase = ''
+                  ruff check
+                  ruff format --check
+                '';
+                installPhase = ''
+                  touch $out
+                '';
+              };
+              uvlock = stdenvNoCC.mkDerivation {
+                name = "uv-lock-synced";
+                env = {
+                  UV_NO_MANAGED_PYTHON = "true";
+                  UV_SYSTEM_PYTHON = "true";
+                };
+                src = with lib.fileset; toSource {
+                  root = ./.;
+                  fileset = unions [
+                    ./pyproject.toml
+                    ./uv.lock
+                  ];
+                };
+                nativeBuildInputs = [
+                  uv
+                  python
+                  writableTmpDirAsHomeHook
+                ];
+                buildPhase = ''
+                  uv lock --locked
+                '';
+                installPhase = ''
+                  touch $out
                 '';
               };
             } // (old.passthru.tests or {});

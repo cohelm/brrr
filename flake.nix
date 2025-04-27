@@ -158,56 +158,8 @@
           };
         };
         checks = {
-          pytestUnit = pkgs.stdenvNoCC.mkDerivation {
-            name = "pytest";
-            nativeBuildInputs = [ brrrpy.brrr-venv-test ];
-            src = lib.cleanSource ./python;
-            buildPhase = ''
-              pytest -m "not dependencies"
-            '';
-            installPhase = ''
-              touch $out
-            '';
-          };
-          ruff = pkgs.stdenvNoCC.mkDerivation {
-            name = "ruff";
-            nativeBuildInputs = [ brrrpy.brrr-venv-test ];
-            src = lib.cleanSource ./python;
-            buildPhase = ''
-              ruff check
-              ruff format --check
-            '';
-            installPhase = ''
-              touch $out
-            '';
-          };
           pytestIntegration = pkgs.callPackage ./brrr-integration.test.nix { inherit self; };
           demoNixosTest = pkgs.callPackage ./brrr-demo.test.nix { inherit self; };
-          uvlock = pkgs.stdenvNoCC.mkDerivation {
-            name = "uv-lock-synced";
-            env = {
-              UV_NO_MANAGED_PYTHON = "true";
-              UV_SYSTEM_PYTHON = "true";
-            };
-            src = with lib.fileset; toSource {
-              root = ./python;
-              fileset = unions [
-                ./python/pyproject.toml
-                ./python/uv.lock
-              ];
-            };
-            nativeBuildInputs = [
-              self'.packages.uv
-              self'.packages.python
-              pkgs.writableTmpDirAsHomeHook
-            ];
-            buildPhase = ''
-              uv lock --locked
-            '';
-            installPhase = ''
-              touch $out
-            '';
-          };
         } // brrrpy.brrr.tests;
         devshells = {
           default = {
