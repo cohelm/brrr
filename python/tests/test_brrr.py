@@ -29,6 +29,109 @@ async def test_no_brrr_map(handle_nobrrr):
     assert await handle_nobrrr.map([[3], [4]]) == [6, 10]
 
 
+async def test_gather():
+    b = Brrr()
+
+    @b.register_task
+    async def foo(a: int) -> int:
+        return a * 2
+
+    assert await b.gather(foo(3), foo(4)) == [6, 8]
+
+
+async def _call_nested_gather(*, use_brrr_gather: bool):
+    """
+    Helper function to test that brrr.gather runs all brrr tasks in parallel,
+    in contrast with how asyncio.gather only runs one at a time.
+    """
+    b = Brrr()
+    calls = []
+    store = InMemoryByteStore()
+    queue = ClosableInMemQueue()
+
+    @b.register_task
+    async def foo(a: int) -> int:
+        calls.append(f"foo({a})")
+        return a * 2
+
+    @b.register_task
+    async def bar(a: int) -> int:
+        calls.append(f"bar({a})")
+        return a - 1
+
+    async def baz(a: int) -> int:
+        b = await foo(a)
+        return await bar(b)
+
+    @b.register_task
+    async def top(xs: list[int]) -> list[int]:
+        calls.append(f"top({xs})")
+        if use_brrr_gather:
+            result = await b.gather(*[baz(x) for x in xs])
+        else:
+            result = await asyncio.gather(*[baz(x) for x in xs])
+        # with b.gather, `top` is called twice after its dependencies are done,
+        # but we can only close the queue once
+        if not queue.closing:
+            await queue.close()
+        return result
+
+    b.setup(queue, store, store, PickleCodec())
+    await b.schedule("top", ([3, 4],), {})
+    await b.wrrrk()
+    await queue.join()
+    return calls
+
+
+async def test_brrr_gather():
+    """
+    Since brrr.gather waits for all Defers to be raised, top should Defer at most twice,
+    and both foo calls should happen before both bar calls.
+
+    Example order of events:
+    - enqueue top([3, 4])
+    - run top([3, 4])
+        - attempt foo(3), Defer and enqueue
+        - attempt foo(4), Defer and enqueue
+        - Defer and enqueue
+    - run foo(3)
+    - run foo(4)
+    - run top([3, 4])
+        - attempt baz(3), Defer and enqueue
+        - attempt baz(4), Defer and enqueue
+        - Defer and enqueue
+    - run baz(3)
+    - run baz(4)
+    - run top([3, 4])
+    """
+    brrr_calls = await _call_nested_gather(use_brrr_gather=True)
+    # TODO: once debouncing is fixed, this should be 3 instead of 5;
+    # see test_no_debounce_parent
+    assert len([c for c in brrr_calls if c.startswith("top")]) == 5
+    foo3, foo4, bar6, bar8 = (
+        brrr_calls.index("foo(3)"),
+        brrr_calls.index("foo(4)"),
+        brrr_calls.index("bar(6)"),
+        brrr_calls.index("bar(8)"),
+    )
+    assert foo3 < bar6
+    assert foo3 < bar8
+    assert foo4 < bar6
+    assert foo4 < bar8
+
+
+async def test_asyncio_gather():
+    """
+    Since asyncio.gather raises the first Defer, top should Defer four times.
+    Each foo call should happen before its logical next bar call, but there is no
+    guarantee that either foo call happens before the other bar call.
+    """
+    asyncio_calls = await _call_nested_gather(use_brrr_gather=False)
+    assert len([c for c in asyncio_calls if c.startswith("top")]) == 5
+    assert asyncio_calls.index("foo(3)") < asyncio_calls.index("bar(6)")
+    assert asyncio_calls.index("foo(4)") < asyncio_calls.index("bar(8)")
+
+
 async def test_nop_closed_queue():
     b = Brrr()
     store = InMemoryByteStore()

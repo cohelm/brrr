@@ -106,21 +106,21 @@ class Brrr:
     def are_we_inside_worker_context(self) -> Any:
         return self.worker_singleton
 
-    async def gather(self, *task_lambdas) -> Sequence[Any]:
+    async def gather(self, *task_awaitables) -> Sequence[Any]:
         """
         Takes a number of task lambdas and calls each of them.
         If they've all been computed, return their values,
         Otherwise raise jobs for those that haven't been computed
         """
         if not self.are_we_inside_worker_context():
-            return await asyncio.gather(*(f() for f in task_lambdas))
+            return await asyncio.gather(*(f for f in task_awaitables))
 
         defers = []
         values = []
 
-        for task_lambda in task_lambdas:
+        for task_awaitable in task_awaitables:
             try:
-                values.append(await task_lambda())
+                values.append(await task_awaitable)
             except Defer as d:
                 defers.extend(d.calls)
 
@@ -270,12 +270,6 @@ class Task:
         else:
             return self.brrr._codec.decode_return(encoded_val)
 
-    def to_lambda(self, *args, **kwargs):
-        """
-        Separate function to capture a closure
-        """
-        return lambda: self(*args, **kwargs)
-
     async def map(self, args: list[dict | list | tuple[tuple, dict]]):
         """
         Fanning out, a map function returns the values if they have already been computed.
@@ -293,9 +287,7 @@ class Task:
             else arg
             for arg in args
         ]
-        return await self.brrr.gather(
-            *(self.to_lambda(*argv[0], **argv[1]) for argv in argvs)
-        )
+        return await self.brrr.gather(*(self(*argv[0], **argv[1]) for argv in argvs))
 
     # I think /technically/ the async + await here cancel each other out and you
     # could do without either, but there are so many gotchas around it and
