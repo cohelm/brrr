@@ -12,7 +12,7 @@ import { Defer } from './models/defer'
 import type { Memory } from './models/memory'
 import type { Queue } from './models/queue'
 import { Task } from './models/task'
-import type { Fn, Maybe } from './types'
+import type { Fn } from './types'
 import { Wrrrker } from './wrrrker'
 
 type BrrrConfig = Readonly<{
@@ -22,10 +22,10 @@ type BrrrConfig = Readonly<{
 }>
 
 export class Brrr {
-  public cache: Maybe<Cache>
-  public memory: Maybe<Memory>
-  public queue: Maybe<Queue>
-  public workerSingleton: Maybe<Wrrrker>
+  public cache?: Cache
+  public memory?: Memory
+  public queue?: Queue
+  public workerSingleton?: Wrrrker
 
   private readonly tasks = new Map<string, Task<unknown[], unknown>>()
   public readonly SPAWN_LIMIT = 500
