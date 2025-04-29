@@ -25,4 +25,8 @@ export class InMemoryQueue extends Queue {
     const size = this.messages.size()
     return new QueueInfo(size)
   }
+
+  public async close(): Promise<void> {
+    this.closed = true
+  }
 }

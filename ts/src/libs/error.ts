@@ -66,6 +66,12 @@ export class QueueIsEmptyError extends BrrrError {
   }
 }
 
+export class QueuePopTimeoutError extends BrrrError {
+  public constructor() {
+    super('Queue pop timed out')
+  }
+}
+
 export class WorkerAlreadyRunningError extends BrrrError {
   public constructor() {
     super('Worker already running')

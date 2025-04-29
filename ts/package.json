@@ -2,7 +2,7 @@
   "name": "brrr",
   "version": "0.1.0",
   "description": "Horizontally scalable workflow scheduling with pluggable backends",
-  "license": "MIT",
+  "license": "AGPLv3",
   "type": "module",
   "exports": {
     "./package.json": "./package.json",
@@ -20,7 +20,9 @@
   "main": "dist/index.js",
   "module": "dist/index.js",
   "types": "dist/index.d.ts",
-  "files": ["dist"],
+  "files": [
+    "dist"
+  ],
   "scripts": {
     "build": "tsc",
     "check": "biome check --write && sort-package-json --quiet",
@@ -29,6 +31,8 @@
     "type-check": "tsc --noEmit"
   },
   "dependencies": {
+    "@aws-sdk/client-dynamodb": "^3.798.0",
+    "@aws-sdk/lib-dynamodb": "^3.798.0",
     "@datastructures-js/deque": "^1.0.5",
     "bencode": "^4.0.0",
     "redis": "^4.7.0"

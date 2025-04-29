@@ -1,31 +1,44 @@
 import { equal, ok, rejects } from 'node:assert'
 import { suite, test } from 'node:test'
+import { createClient } from 'redis'
 import { InMemoryQueue } from '../../src/adapters/in-memory-queue'
+import { RedisQueue } from '../../src/adapters/redis-queue'
 import { QueueIsEmptyError } from '../../src/libs/error'
 import type { Queue } from '../../src/models/queue'
 
 const cases: {
   readonly name: string
-  readonly createQueue: () => Queue
+  readonly createQueue: () => Promise<Queue>
+  readonly cleanup?: (queue: Queue) => Promise<void>
 }[] = [
   {
     name: InMemoryQueue.name,
-    createQueue: (): InMemoryQueue => new InMemoryQueue()
+    createQueue: async (): Promise<InMemoryQueue> => {
+      return new InMemoryQueue()
+    }
+  },
+  {
+    name: RedisQueue.name,
+    createQueue: async (): Promise<RedisQueue> => {
+      const client = createClient()
+      await client.connect()
+      return new RedisQueue(client, 'brrr-test')
+    }
   }
 ]
 
 for (const { name, createQueue } of cases) {
   await suite(`Queue implementation: ${name}`, async () => {
     await test('raises QueueIsEmpty when empty', async () => {
-      const queue = createQueue()
-
+      const queue = await createQueue()
       await rejects(async () => {
         await queue.getMessage()
       }, QueueIsEmptyError)
+      await queue.close()
     })
 
     await test('enqueues and dequeues messages correctly', async () => {
-      const queue = createQueue()
+      const queue = await createQueue()
 
       const messages = new Set(['message-1', 'message-2', 'message-3'])
 
@@ -58,6 +71,8 @@ for (const { name, createQueue } of cases) {
       await rejects(async () => {
         await queue.getMessage()
       }, QueueIsEmptyError)
+
+      await queue.close()
     })
   })
 }

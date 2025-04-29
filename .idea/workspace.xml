@@ -5,23 +5,41 @@
   </component>
   <component name="ChangeListManager">
     <list default="true" id="0c0ff214-f39c-430a-9283-76dcd99439e0" name="Changes" comment="">
-      <change afterPath="$PROJECT_DIR$/.idea/.gitignore" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/.idea/vcs.xml" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/ts/.idea/.gitignore" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/ts/.idea/misc.xml" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/ts/.idea/modules.xml" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/ts/src/adapters/dynamo-store.ts" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/ts/src/adapters/in-memory-store.ts" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/ts/src/adapters/redis-queue.ts" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/ts/test/models/store.ts" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/.idea/brrr.iml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/brrr.iml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/ts/package-lock.json" beforeDir="false" afterPath="$PROJECT_DIR$/ts/package-lock.json" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/ts/package.json" beforeDir="false" afterPath="$PROJECT_DIR$/ts/package.json" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/ts/src/adapters/in-memory-queue.ts" beforeDir="false" afterPath="$PROJECT_DIR$/ts/src/adapters/in-memory-queue.ts" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/ts/src/libs/error.ts" beforeDir="false" afterPath="$PROJECT_DIR$/ts/src/libs/error.ts" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/ts/src/models/queue.ts" beforeDir="false" afterPath="$PROJECT_DIR$/ts/src/models/queue.ts" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/ts/test/brrr.ts" beforeDir="false" afterPath="$PROJECT_DIR$/ts/test/brrr.ts" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/ts/test/fixtures/in-memory-store.ts" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/ts/test/fixtures/redis.ts" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/ts/test/models/queue.ts" beforeDir="false" afterPath="$PROJECT_DIR$/ts/test/models/queue.ts" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/ts/test/spawn-limit.ts" beforeDir="false" afterPath="$PROJECT_DIR$/ts/test/spawn-limit.ts" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
     <option name="HIGHLIGHT_NON_ACTIVE_CHANGELIST" value="false" />
     <option name="LAST_RESOLUTION" value="IGNORE" />
   </component>
+  <component name="FileTemplateManagerImpl">
+    <option name="RECENT_TEMPLATES">
+      <list>
+        <option value="TypeScript File" />
+      </list>
+    </option>
+  </component>
   <component name="Git.Settings">
     <option name="RECENT_GIT_ROOT_PATH" value="$PROJECT_DIR$" />
   </component>
-  <component name="ProjectColorInfo"><![CDATA[{
-  "associatedIndex": 4
-}]]></component>
+  <component name="ProjectColorInfo">{
+  &quot;associatedIndex&quot;: 4
+}</component>
   <component name="ProjectId" id="2wND2vYW75L7FTTYGqoP7kus0f4" />
   <component name="ProjectLevelVcsManager">
     <ConfirmationsSetting value="2" id="Add" />
@@ -29,29 +47,45 @@
   <component name="ProjectViewState">
     <option name="showExcludedFiles" value="false" />
   </component>
-  <component name="PropertiesComponent"><![CDATA[{
-  "keyToString": {
-    "NIXITCH_NIXPKGS_CONFIG": "",
-    "NIXITCH_NIX_CONF_DIR": "",
-    "NIXITCH_NIX_OTHER_STORES": "",
-    "NIXITCH_NIX_PATH": "",
-    "NIXITCH_NIX_PROFILES": "",
-    "NIXITCH_NIX_REMOTE": "",
-    "NIXITCH_NIX_USER_PROFILE_DIR": "",
-    "Python tests.Python tests for test_brrr.test_brrr_gather.executor": "Run",
-    "Python tests.Python tests for test_brrr.test_no_brrr_funcall.executor": "Run",
-    "Python tests.Python tests for tests.test_brrr.test_no_brrr_funcall.executor": "Run",
-    "node.js.detected.package.eslint": "true",
-    "node.js.detected.package.tslint": "true",
-    "node.js.selected.package.eslint": "(autodetect)",
-    "node.js.selected.package.tslint": "(autodetect)",
-    "project.structure.last.edited": "Modules",
-    "project.structure.proportion": "0.15",
-    "project.structure.side.proportion": "0.2",
-    "settings.editor.selected.configurable": "preferences.editor",
-    "ts.external.directory.path": "/Users/me/dev/cohelm/brrr/ts/node_modules/typescript/lib"
+  <component name="PropertiesComponent">{
+  &quot;keyToString&quot;: {
+    &quot;ModuleVcsDetector.initialDetectionPerformed&quot;: &quot;true&quot;,
+    &quot;NIXITCH_NIXPKGS_CONFIG&quot;: &quot;&quot;,
+    &quot;NIXITCH_NIX_CONF_DIR&quot;: &quot;&quot;,
+    &quot;NIXITCH_NIX_OTHER_STORES&quot;: &quot;&quot;,
+    &quot;NIXITCH_NIX_PATH&quot;: &quot;&quot;,
+    &quot;NIXITCH_NIX_PROFILES&quot;: &quot;&quot;,
+    &quot;NIXITCH_NIX_REMOTE&quot;: &quot;&quot;,
+    &quot;NIXITCH_NIX_USER_PROFILE_DIR&quot;: &quot;&quot;,
+    &quot;Python tests.Python tests for test_brrr.test_brrr_gather.executor&quot;: &quot;Run&quot;,
+    &quot;Python tests.Python tests for test_brrr.test_no_brrr_funcall.executor&quot;: &quot;Run&quot;,
+    &quot;Python tests.Python tests for tests.test_brrr.test_no_brrr_funcall.executor&quot;: &quot;Run&quot;,
+    &quot;RunOnceActivity.git.unshallow&quot;: &quot;true&quot;,
+    &quot;RunOnceActivity.go.formatter.settings.were.checked&quot;: &quot;true&quot;,
+    &quot;RunOnceActivity.go.migrated.go.modules.settings&quot;: &quot;true&quot;,
+    &quot;git-widget-placeholder&quot;: &quot;feature/plat-121&quot;,
+    &quot;go.import.settings.migrated&quot;: &quot;true&quot;,
+    &quot;junie.onboarding.icon.badge.shown&quot;: &quot;true&quot;,
+    &quot;node.js.detected.package.eslint&quot;: &quot;true&quot;,
+    &quot;node.js.detected.package.tslint&quot;: &quot;true&quot;,
+    &quot;node.js.selected.package.eslint&quot;: &quot;(autodetect)&quot;,
+    &quot;node.js.selected.package.tslint&quot;: &quot;(autodetect)&quot;,
+    &quot;nodejs_package_manager_path&quot;: &quot;npm&quot;,
+    &quot;project.structure.last.edited&quot;: &quot;Modules&quot;,
+    &quot;project.structure.proportion&quot;: &quot;0.15&quot;,
+    &quot;project.structure.side.proportion&quot;: &quot;0.2&quot;,
+    &quot;settings.editor.selected.configurable&quot;: &quot;preferences.editor&quot;,
+    &quot;ts.external.directory.path&quot;: &quot;/Users/me/dev/cohelm/brrr/ts/node_modules/typescript/lib&quot;,
+    &quot;vue.rearranger.settings.migration&quot;: &quot;true&quot;
   }
-}]]></component>
+}</component>
+  <component name="RecentsManager">
+    <key name="MoveFile.RECENT_KEYS">
+      <recent name="$PROJECT_DIR$/ts/src/adapters" />
+      <recent name="$PROJECT_DIR$/ts/src/libs" />
+      <recent name="$PROJECT_DIR$/ts/src/core" />
+    </key>
+  </component>
   <component name="RunManager" selected="Python tests.Python tests for test_brrr.test_brrr_gather">
     <configuration name="Python tests for test_brrr.test_brrr_gather" type="tests" factoryName="Autodetect" temporary="true" nameIsGenerated="true">
       <module name="brrr" />
@@ -125,6 +159,9 @@
       <option name="presentableId" value="Default" />
       <updated>1745872933540</updated>
       <workItem from="1745872935125" duration="2870000" />
+      <workItem from="1745877301652" duration="14770000" />
+      <workItem from="1745952545651" duration="59000" />
+      <workItem from="1745952690889" duration="4200000" />
     </task>
     <servers />
   </component>

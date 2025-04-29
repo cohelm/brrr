@@ -1,10 +1,7 @@
-import {
-  CompareMismatchError,
-  MemoryValueNotFoundError
-} from '../../src/libs/error'
-import type { Cache } from '../../src/models/cache'
-import type { MemKey } from '../../src/models/memory'
-import type { Store } from '../../src/models/store'
+import { CompareMismatchError, MemoryValueNotFoundError } from '../libs/error'
+import type { Cache } from '../models/cache'
+import type { MemKey } from '../models/memory'
+import type { Store } from '../models/store'
 
 export class InMemoryStore implements Store, Cache {
   public innerByteStore = new Map<string, Uint8Array>()
@@ -45,11 +42,9 @@ export class InMemoryStore implements Store, Cache {
   ): Promise<void> {
     const keyStr = key.toString()
     const current = this.innerByteStore.get(keyStr)
-
-    if (current === undefined || !uint8ArrayEquals(current, expected)) {
+    if (!current || !this.uint8ArrayEquals(current, expected)) {
       throw new CompareMismatchError(key)
     }
-
     this.innerByteStore.set(keyStr, value)
   }
 
@@ -60,7 +55,7 @@ export class InMemoryStore implements Store, Cache {
     const keyStr = key.toString()
     const current = this.innerByteStore.get(keyStr)
 
-    if (current === undefined || !uint8ArrayEquals(current, expected)) {
+    if (current === undefined || !this.uint8ArrayEquals(current, expected)) {
       throw new CompareMismatchError(key)
     }
 
@@ -72,12 +67,16 @@ export class InMemoryStore implements Store, Cache {
     this.spawnCountStore.set(key, value)
     return value
   }
-}
 
-function uint8ArrayEquals(a: Uint8Array, b: Uint8Array): boolean {
-  if (a.length !== b.length) return false
-  for (let i = 0; i < a.length; i++) {
-    if (a[i] !== b[i]) return false
+  private uint8ArrayEquals(a: Uint8Array, b: Uint8Array): boolean {
+    if (a.length !== b.length) {
+      return false
+    }
+    for (let i = 0; i < a.length; i++) {
+      if (a[i] !== b[i]) {
+        return false
+      }
+    }
+    return true
   }
-  return true
 }
