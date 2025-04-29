@@ -20,16 +20,16 @@
   "main": "dist/index.js",
   "module": "dist/index.js",
   "types": "dist/index.d.ts",
-  "files": [
-    "dist"
-  ],
+  "files": ["dist"],
   "scripts": {
     "build": "tsc",
     "check": "biome check --write && sort-package-json --quiet",
     "test": "tsx --test",
+    "test:watch": "tsx --test --watch",
     "type-check": "tsc --noEmit"
   },
   "dependencies": {
+    "@datastructures-js/deque": "^1.0.5",
     "bencode": "^4.0.0",
     "redis": "^4.7.0"
   },

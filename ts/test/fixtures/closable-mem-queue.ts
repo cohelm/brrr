@@ -1,6 +1,6 @@
 import AsyncQueue from '@ai-zen/async-queue'
 import { QueueIsClosedError } from '../../src/libs/error'
-import { Message, Queue } from '../../src/models/queue'
+import { Message, Queue, QueueInfo } from '../../src/models/queue'
 
 export class ClosableInMemQueue extends Queue {
   private operational = true
@@ -45,5 +45,9 @@ export class ClosableInMemQueue extends Queue {
       throw new QueueIsClosedError()
     }
     this.received.push(body)
+  }
+
+  public async getInfo(): Promise<QueueInfo> {
+    return new QueueInfo(this.received.size)
   }
 }

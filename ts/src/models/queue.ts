@@ -12,4 +12,6 @@ export abstract class Queue {
   abstract putMessage(body: string): Promise<void>
 
   abstract getMessage(): Promise<Message>
+
+  abstract getInfo(): Promise<QueueInfo>
 }
