@@ -15,10 +15,10 @@ export class Task<const in A extends unknown[], out R> {
       return this.fn(...args)
     }
     this.brrr.requiresSetup()
-    const call = this.brrr.memory?.makeCall(this.name, args)
+    const call = this.brrr.memory.makeCall(this.name, args)
     try {
-      const encoded = await this.brrr.memory?.getValue(call)
-      return this.brrr.memory?.codec.decodeReturn(encoded)
+      const encoded = await this.brrr.memory.getValue(call)
+      return this.brrr.memory.codec.decodeReturn(encoded)
     } catch (e) {
       if (!(e instanceof MemoryValueNotFoundError)) {
         throw e

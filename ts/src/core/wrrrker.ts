@@ -33,7 +33,7 @@ export class Wrrrker implements AsyncDisposable {
     const { taskName, payload } = await this.brrr.memory.getCallBytes(memoKey)
     try {
       const encodedReturn = await this.brrr.callTask(taskName, memoKey, payload)
-      await this.brrr.memory?.setValue(memoKey, encodedReturn).catch(err => {
+      await this.brrr.memory.setValue(memoKey, encodedReturn).catch(err => {
         if (!(err instanceof MemoryKeyAlreadyExistsError)) {
           throw err
         }
@@ -65,7 +65,7 @@ export class Wrrrker implements AsyncDisposable {
     this.brrr.requiresSetup()
     while (true) {
       try {
-        const message = await this.brrr.queue?.getMessage()
+        const message = await this.brrr.queue.getMessage()
         await this.handleMessage(message.body)
       } catch (e) {
         if (e instanceof QueueIsEmptyError) {

@@ -57,11 +57,11 @@ export class Brrr {
     ...args: [string | Task<A, unknown>, A]
   ): Promise<void> {
     this.requiresSetup()
-    const call = this.memory?.makeCall(
+    const call = this.memory.makeCall(
       typeof args[0] === 'string' ? args[0] : args[0].name,
       args[1]
     )
-    if (await this.memory?.hasCall(call)) {
+    if (await this.memory.hasCall(call)) {
       return
     }
     return this.scheduleRootCall(call)
@@ -69,7 +69,7 @@ export class Brrr {
 
   private async scheduleRootCall(call: Call): Promise<void> {
     this.requiresSetup()
-    await this.memory?.setCall(call)
+    await this.memory.setCall(call)
     const rootId = Buffer.from(randomUUID().replaceAll('-', ''), 'hex')
       .toString('base64url')
       .replaceAll('=', '')
@@ -82,7 +82,7 @@ export class Brrr {
     parentKey: string
   ): Promise<void> {
     this.requiresSetup()
-    await this.memory?.setCall(child)
+    await this.memory.setCall(child)
     await this.memory.addPendingReturn(child.memoKey, parentKey, () => {
       return this.putJob(child.memoKey, rootId)
     })
@@ -90,10 +90,10 @@ export class Brrr {
 
   public async putJob(memoKey: string, rootId: string): Promise<void> {
     this.requiresSetup()
-    if ((await this.cache?.incr(`brrr_count/${rootId}`)) > this.SPAWN_LIMIT) {
+    if ((await this.cache.incr(`brrr_count/${rootId}`)) > this.SPAWN_LIMIT) {
       throw new SpawnLimitError(this.SPAWN_LIMIT, rootId, memoKey)
     }
-    this.queue?.putMessage(`${rootId}/${memoKey}`)
+    this.queue.putMessage(`${rootId}/${memoKey}`)
   }
 
   public async callTask(
@@ -106,7 +106,7 @@ export class Brrr {
     if (!task) {
       throw new TaskNotFoundError(taskName)
     }
-    return this.memory?.codec.invokeTask(memoKey, task, payload)
+    return this.memory.codec.invokeTask(memoKey, task, payload)
   }
 
   public async read<A extends unknown[], R>(
@@ -114,9 +114,9 @@ export class Brrr {
     args: A
   ): Promise<R> {
     this.requiresSetup()
-    const call = this.memory?.makeCall(taskName, args)
+    const call = this.memory.makeCall(taskName, args)
     const encoded = await this.memory.getValue(call)
-    return this.memory?.codec.decodeReturn(encoded)
+    return this.memory.codec.decodeReturn(encoded)
   }
 
   public task<A extends unknown[], R>(fn: Fn<A, R>): Task<A, R>
