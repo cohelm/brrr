@@ -1,6 +1,6 @@
-import type { Brrr } from '../brrr'
+import type { Brrr } from '../core/brrr'
 import { MemoryValueNotFoundError } from '../libs/error'
-import type { Fn } from '../types'
+import type { Fn } from '../libs/types'
 import { Defer } from './defer'
 
 export class Task<const in A extends unknown[], out R> {

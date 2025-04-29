@@ -5,14 +5,14 @@ import {
   InvalidTaskNameError,
   SpawnLimitError,
   TaskNotFoundError
-} from './libs/error'
-import type { Cache } from './models/cache'
-import type { Call } from './models/call'
-import { Defer } from './models/defer'
-import type { Memory } from './models/memory'
-import type { Queue } from './models/queue'
-import { Task } from './models/task'
-import type { Fn } from './types'
+} from '../libs/error'
+import type { Fn } from '../libs/types'
+import type { Cache } from '../models/cache'
+import type { Call } from '../models/call'
+import { Defer } from '../models/defer'
+import type { Memory } from '../models/memory'
+import type { Queue } from '../models/queue'
+import { Task } from '../models/task'
 import { Wrrrker } from './wrrrker'
 
 type BrrrConfig = Readonly<{

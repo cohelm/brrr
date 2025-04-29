@@ -5,7 +5,7 @@ import {
   MemoryKeyAlreadyExistsError,
   MemoryValueNotFoundError
 } from '../libs/error'
-import type { Fn } from '../types'
+import type { Fn } from '../libs/types'
 import type { Call } from './call'
 import type { Codec } from './codec'
 import { PendingReturns } from './pending-returns'

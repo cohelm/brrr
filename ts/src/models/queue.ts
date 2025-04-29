@@ -9,7 +9,7 @@ export class Message {
 export abstract class Queue {
   protected readonly RECV_BLOCK_SECS = 20
 
-  abstract putMessage(body: string): void
+  abstract putMessage(body: string): Promise<void>
 
   abstract getMessage(): Promise<Message>
 }

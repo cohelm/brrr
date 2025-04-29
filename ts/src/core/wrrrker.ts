@@ -1,11 +1,11 @@
-import type { Brrr } from './brrr'
 import {
   MemoryKeyAlreadyExistsError,
   QueueIsClosedError,
   QueueIsEmptyError,
   WorkerAlreadyRunningError
-} from './libs/error'
-import { Defer } from './models/defer'
+} from '../libs/error'
+import { Defer } from '../models/defer'
+import type { Brrr } from './brrr'
 
 export class Wrrrker implements AsyncDisposable {
   public constructor(private readonly brrr: Brrr) {

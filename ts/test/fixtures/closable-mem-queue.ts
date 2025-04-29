@@ -20,7 +20,7 @@ export class ClosableInMemQueue extends Queue {
     this.iterator = this.received[Symbol.asyncIterator]()
   }
 
-  async close(): Promise<void> {
+  public async close(): Promise<void> {
     if (this.closing) {
       throw new QueueIsClosedError()
     }
@@ -28,7 +28,7 @@ export class ClosableInMemQueue extends Queue {
     this.received.done()
   }
 
-  async getMessage(): Promise<Message> {
+  public async getMessage(): Promise<Message> {
     if (!this.operational) {
       throw new QueueIsClosedError()
     }
@@ -40,7 +40,7 @@ export class ClosableInMemQueue extends Queue {
     return new Message(value)
   }
 
-  putMessage(body: string): void {
+  public async putMessage(body: string): Promise<void> {
     if (!this.operational) {
       throw new QueueIsClosedError()
     }

@@ -15,7 +15,7 @@ export class InMemoryQueue extends Queue {
     return new Message(this.messages.shift() || '')
   }
 
-  public putMessage(body: string): void {
+  public async putMessage(body: string): Promise<void> {
     this.messages.push(body)
   }
 

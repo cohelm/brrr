@@ -1,5 +1,5 @@
-import { Brrr } from './brrr'
+import { Brrr } from './core/brrr'
 
 export const brrr = new Brrr()
 
-export { Brrr } from './brrr'
+export { Brrr } from './core/brrr'
