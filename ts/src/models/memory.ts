@@ -100,13 +100,13 @@ export class Memory {
         if (!(err instanceof MemoryValueNotFoundError)) {
           throw err
         }
-        existing = new PendingReturns(undefined, new Set([newReturn]))
+        existing = new PendingReturns(-1, new Set([newReturn]))
         existingEncoded = await existing.encode()
         await this.store.setNewValue(memKey, existingEncoded)
       }
-      if (!existing.scheduledAt) {
+      if (existing.scheduledAt === -1) {
         await scheduleJob()
-        existing.scheduledAt = Math.floor(Date.now() / 1000).toString()
+        existing.scheduledAt = Math.floor(Date.now() / 1000)
         shouldStoreAgain = true
       }
       if (shouldStoreAgain) {

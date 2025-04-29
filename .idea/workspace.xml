@@ -5,22 +5,10 @@
   </component>
   <component name="ChangeListManager">
     <list default="true" id="0c0ff214-f39c-430a-9283-76dcd99439e0" name="Changes" comment="">
-      <change afterPath="$PROJECT_DIR$/ts/src/adapters/dynamo-store.ts" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/ts/src/adapters/in-memory-store.ts" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/ts/src/adapters/redis-queue.ts" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/ts/test/models/store.ts" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/.idea/brrr.iml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/brrr.iml" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/ts/test/codecs/naive-codec.ts" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/ts/package-lock.json" beforeDir="false" afterPath="$PROJECT_DIR$/ts/package-lock.json" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/ts/package.json" beforeDir="false" afterPath="$PROJECT_DIR$/ts/package.json" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/ts/src/adapters/in-memory-queue.ts" beforeDir="false" afterPath="$PROJECT_DIR$/ts/src/adapters/in-memory-queue.ts" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/ts/src/libs/error.ts" beforeDir="false" afterPath="$PROJECT_DIR$/ts/src/libs/error.ts" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/ts/src/models/queue.ts" beforeDir="false" afterPath="$PROJECT_DIR$/ts/src/models/queue.ts" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/ts/test/brrr.ts" beforeDir="false" afterPath="$PROJECT_DIR$/ts/test/brrr.ts" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/ts/test/fixtures/in-memory-store.ts" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/ts/test/fixtures/redis.ts" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/ts/test/models/queue.ts" beforeDir="false" afterPath="$PROJECT_DIR$/ts/test/models/queue.ts" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/ts/test/spawn-limit.ts" beforeDir="false" afterPath="$PROJECT_DIR$/ts/test/spawn-limit.ts" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/ts/src/models/memory.ts" beforeDir="false" afterPath="$PROJECT_DIR$/ts/src/models/memory.ts" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/ts/src/models/pending-returns.ts" beforeDir="false" afterPath="$PROJECT_DIR$/ts/src/models/pending-returns.ts" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -47,40 +35,41 @@
   <component name="ProjectViewState">
     <option name="showExcludedFiles" value="false" />
   </component>
-  <component name="PropertiesComponent">{
-  &quot;keyToString&quot;: {
-    &quot;ModuleVcsDetector.initialDetectionPerformed&quot;: &quot;true&quot;,
-    &quot;NIXITCH_NIXPKGS_CONFIG&quot;: &quot;&quot;,
-    &quot;NIXITCH_NIX_CONF_DIR&quot;: &quot;&quot;,
-    &quot;NIXITCH_NIX_OTHER_STORES&quot;: &quot;&quot;,
-    &quot;NIXITCH_NIX_PATH&quot;: &quot;&quot;,
-    &quot;NIXITCH_NIX_PROFILES&quot;: &quot;&quot;,
-    &quot;NIXITCH_NIX_REMOTE&quot;: &quot;&quot;,
-    &quot;NIXITCH_NIX_USER_PROFILE_DIR&quot;: &quot;&quot;,
-    &quot;Python tests.Python tests for test_brrr.test_brrr_gather.executor&quot;: &quot;Run&quot;,
-    &quot;Python tests.Python tests for test_brrr.test_no_brrr_funcall.executor&quot;: &quot;Run&quot;,
-    &quot;Python tests.Python tests for tests.test_brrr.test_no_brrr_funcall.executor&quot;: &quot;Run&quot;,
-    &quot;RunOnceActivity.git.unshallow&quot;: &quot;true&quot;,
-    &quot;RunOnceActivity.go.formatter.settings.were.checked&quot;: &quot;true&quot;,
-    &quot;RunOnceActivity.go.migrated.go.modules.settings&quot;: &quot;true&quot;,
-    &quot;git-widget-placeholder&quot;: &quot;feature/plat-121&quot;,
-    &quot;go.import.settings.migrated&quot;: &quot;true&quot;,
-    &quot;junie.onboarding.icon.badge.shown&quot;: &quot;true&quot;,
-    &quot;node.js.detected.package.eslint&quot;: &quot;true&quot;,
-    &quot;node.js.detected.package.tslint&quot;: &quot;true&quot;,
-    &quot;node.js.selected.package.eslint&quot;: &quot;(autodetect)&quot;,
-    &quot;node.js.selected.package.tslint&quot;: &quot;(autodetect)&quot;,
-    &quot;nodejs_package_manager_path&quot;: &quot;npm&quot;,
-    &quot;project.structure.last.edited&quot;: &quot;Modules&quot;,
-    &quot;project.structure.proportion&quot;: &quot;0.15&quot;,
-    &quot;project.structure.side.proportion&quot;: &quot;0.2&quot;,
-    &quot;settings.editor.selected.configurable&quot;: &quot;preferences.editor&quot;,
-    &quot;ts.external.directory.path&quot;: &quot;/Users/me/dev/cohelm/brrr/ts/node_modules/typescript/lib&quot;,
-    &quot;vue.rearranger.settings.migration&quot;: &quot;true&quot;
+  <component name="PropertiesComponent"><![CDATA[{
+  "keyToString": {
+    "ModuleVcsDetector.initialDetectionPerformed": "true",
+    "NIXITCH_NIXPKGS_CONFIG": "",
+    "NIXITCH_NIX_CONF_DIR": "",
+    "NIXITCH_NIX_OTHER_STORES": "",
+    "NIXITCH_NIX_PATH": "",
+    "NIXITCH_NIX_PROFILES": "",
+    "NIXITCH_NIX_REMOTE": "",
+    "NIXITCH_NIX_USER_PROFILE_DIR": "",
+    "Python tests.Python tests for test_brrr.test_brrr_gather.executor": "Run",
+    "Python tests.Python tests for test_brrr.test_no_brrr_funcall.executor": "Run",
+    "Python tests.Python tests for tests.test_brrr.test_no_brrr_funcall.executor": "Run",
+    "RunOnceActivity.git.unshallow": "true",
+    "RunOnceActivity.go.formatter.settings.were.checked": "true",
+    "RunOnceActivity.go.migrated.go.modules.settings": "true",
+    "git-widget-placeholder": "feature/plat-121",
+    "go.import.settings.migrated": "true",
+    "junie.onboarding.icon.badge.shown": "true",
+    "node.js.detected.package.eslint": "true",
+    "node.js.detected.package.tslint": "true",
+    "node.js.selected.package.eslint": "(autodetect)",
+    "node.js.selected.package.tslint": "(autodetect)",
+    "nodejs_package_manager_path": "npm",
+    "project.structure.last.edited": "Modules",
+    "project.structure.proportion": "0.15",
+    "project.structure.side.proportion": "0.2",
+    "settings.editor.selected.configurable": "preferences.pluginManager",
+    "ts.external.directory.path": "/Users/me/dev/cohelm/brrr/ts/node_modules/typescript/lib",
+    "vue.rearranger.settings.migration": "true"
   }
-}</component>
+}]]></component>
   <component name="RecentsManager">
     <key name="MoveFile.RECENT_KEYS">
+      <recent name="$PROJECT_DIR$/ts/src/codecs" />
       <recent name="$PROJECT_DIR$/ts/src/adapters" />
       <recent name="$PROJECT_DIR$/ts/src/libs" />
       <recent name="$PROJECT_DIR$/ts/src/core" />
@@ -161,7 +150,7 @@
       <workItem from="1745872935125" duration="2870000" />
       <workItem from="1745877301652" duration="14770000" />
       <workItem from="1745952545651" duration="59000" />
-      <workItem from="1745952690889" duration="4200000" />
+      <workItem from="1745952690889" duration="10044000" />
     </task>
     <servers />
   </component>

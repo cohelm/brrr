@@ -1,18 +1,22 @@
+import bencode from 'bencode'
+
 export class PendingReturns {
   constructor(
-    public scheduledAt: string | undefined,
+    public scheduledAt: number,
     public readonly returns: Set<string>
   ) {}
 
   public async encode(): Promise<Uint8Array> {
     const sortedReturns = Array.from(this.returns).sort()
-    const jsonString = JSON.stringify([this.scheduledAt, sortedReturns])
-    return new TextEncoder().encode(jsonString)
+    return bencode.encode([this.scheduledAt, sortedReturns])
   }
 
   public static async decode(enc: Uint8Array): Promise<PendingReturns> {
-    const jsonString = new TextDecoder().decode(enc)
-    const [scheduledAt, returns] = JSON.parse(jsonString)
-    return new PendingReturns(scheduledAt, new Set(returns))
+    const [scheduledAt, sortedReturns] = bencode.decode(Buffer.from(enc))
+    const decoder = new TextDecoder()
+    return new PendingReturns(
+      scheduledAt,
+      new Set(sortedReturns.map((it: Uint8Array) => decoder.decode(it)))
+    )
   }
 }
