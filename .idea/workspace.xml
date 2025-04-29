@@ -5,10 +5,8 @@
   </component>
   <component name="ChangeListManager">
     <list default="true" id="0c0ff214-f39c-430a-9283-76dcd99439e0" name="Changes" comment="">
-      <change afterPath="$PROJECT_DIR$/ts/test/codecs/naive-codec.ts" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/ts/src/models/memory.ts" beforeDir="false" afterPath="$PROJECT_DIR$/ts/src/models/memory.ts" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/ts/src/models/pending-returns.ts" beforeDir="false" afterPath="$PROJECT_DIR$/ts/src/models/pending-returns.ts" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/ts/test/codecs/naive-codec.ts" beforeDir="false" afterPath="$PROJECT_DIR$/ts/test/codecs/naive-codec.ts" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -150,7 +148,7 @@
       <workItem from="1745872935125" duration="2870000" />
       <workItem from="1745877301652" duration="14770000" />
       <workItem from="1745952545651" duration="59000" />
-      <workItem from="1745952690889" duration="10044000" />
+      <workItem from="1745952690889" duration="15349000" />
     </task>
     <servers />
   </component>
