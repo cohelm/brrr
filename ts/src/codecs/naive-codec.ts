@@ -1,8 +1,8 @@
-import { Call } from '../../src/models/call'
-import type { Codec } from '../../src/models/codec'
-import type { Task } from '../../src/models/task'
+import { Call } from '../models/call'
+import type { Codec } from '../models/codec'
+import type { Task } from '../models/task'
 
-class NaiveCall extends Call {
+export class NaiveCall extends Call {
   public readonly taskName: string
   public readonly args: unknown[]
   public readonly memoKey: string

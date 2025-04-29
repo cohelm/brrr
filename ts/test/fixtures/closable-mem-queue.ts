@@ -1,6 +1,5 @@
 import AsyncQueue from '@ai-zen/async-queue'
-import { QueueIsClosedError } from '../../src/libs/error'
-import { Message, Queue, QueueInfo } from '../../src/models/queue'
+import { Message, Queue, QueueInfo, QueueIsClosedError } from '../../src'
 
 export class ClosableInMemQueue extends Queue {
   private operational = true

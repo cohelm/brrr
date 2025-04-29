@@ -1,14 +1,14 @@
 import { equal, ok, rejects } from 'node:assert'
 import { suite, test } from 'node:test'
 import { DynamoDBClient } from '@aws-sdk/client-dynamodb'
-import { DynamoStore } from '../../src/adapters/dynamo-store'
-import { InMemoryStore } from '../../src/adapters/in-memory-store'
 import {
   CompareMismatchError,
-  MemoryValueNotFoundError
-} from '../../src/libs/error'
-import { MemKey } from '../../src/models/memory'
-import type { Store } from '../../src/models/store'
+  DynamoStore,
+  InMemoryStore,
+  MemKey,
+  MemoryValueNotFoundError,
+  type Store
+} from '../../src'
 
 const textDecoder = new TextDecoder()
 

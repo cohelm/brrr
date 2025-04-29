@@ -1,11 +1,13 @@
 import { deepStrictEqual, ok, rejects } from 'node:assert'
 import { suite, test } from 'node:test'
-import { Brrr } from '../src'
-import { InMemoryStore } from '../src/adapters/in-memory-store'
-import { SpawnLimitError } from '../src/libs/error'
-import { Memory } from '../src/models/memory'
+import {
+  Brrr,
+  InMemoryStore,
+  Memory,
+  NaiveCodec,
+  SpawnLimitError
+} from '../src'
 import { ClosableInMemQueue } from './fixtures/closable-mem-queue'
-import { NaiveCodec } from './fixtures/naive-codec'
 
 await suite(import.meta.filename, async () => {
   await test('depth limit', async () => {
