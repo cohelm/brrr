@@ -6,15 +6,6 @@
   <component name="ChangeListManager">
     <list default="true" id="0c0ff214-f39c-430a-9283-76dcd99439e0" name="Changes" comment="">
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/ts/package.json" beforeDir="false" afterPath="$PROJECT_DIR$/ts/package.json" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/ts/test/brrr.ts" beforeDir="false" afterPath="$PROJECT_DIR$/ts/test/brrr.ts" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/ts/test/codecs/naive-codec.ts" beforeDir="false" afterPath="$PROJECT_DIR$/ts/test/codecs/naive-codec.ts" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/ts/test/fixtures/closable-mem-queue.ts" beforeDir="false" afterPath="$PROJECT_DIR$/ts/test/fixtures/closable-mem-queue.ts" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/ts/test/models/queue.ts" beforeDir="false" afterPath="$PROJECT_DIR$/ts/test/models/queue.ts" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/ts/test/models/store.ts" beforeDir="false" afterPath="$PROJECT_DIR$/ts/test/models/store.ts" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/ts/test/spawn-limit.ts" beforeDir="false" afterPath="$PROJECT_DIR$/ts/test/spawn-limit.ts" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/ts/test/tsconfig.json" beforeDir="false" afterPath="$PROJECT_DIR$/ts/test/tsconfig.json" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/ts/tsconfig.json" beforeDir="false" afterPath="$PROJECT_DIR$/ts/tsconfig.json" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -37,6 +28,9 @@
   <component name="ProjectId" id="2wND2vYW75L7FTTYGqoP7kus0f4" />
   <component name="ProjectLevelVcsManager">
     <ConfirmationsSetting value="2" id="Add" />
+  </component>
+  <component name="ProjectViewState">
+    <option name="showExcludedFiles" value="false" />
   </component>
   <component name="PropertiesComponent">{
   &quot;keyToString&quot;: {

@@ -1,5 +1,5 @@
+import type { Fn } from '../libs/types'
 import type { Call } from './call'
-import type { Task } from './task'
 
 export interface Codec {
   createCall<A extends unknown[]>(taskName: string, args: A): Call
@@ -8,7 +8,8 @@ export interface Codec {
 
   invokeTask<A extends unknown[], R>(
     memoKey: string,
-    task: Task<A, R>,
+    taskName: string,
+    taskFn: Fn<A, R>,
     payload: Uint8Array
   ): Promise<Uint8Array>
 

@@ -106,7 +106,7 @@ export class Brrr {
     if (!task) {
       throw new TaskNotFoundError(taskName)
     }
-    return this.memory.codec.invokeTask(memoKey, task, payload)
+    return this.memory.codec.invokeTask(memoKey, task.name, task.fn, payload)
   }
 
   public async read<A extends unknown[], R>(
