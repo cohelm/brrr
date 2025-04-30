@@ -8,7 +8,9 @@ authors = [
     { name = "Anterior", email = "tech@anterior.com" },
 ]
 requires-python = "<4,>=3.12"
-dependencies = []
+dependencies = [
+    "bencode-py>=4.0.0",
+]
 
 [project.urls]
 homepage = "https://github.com/cohelm/brrr"
