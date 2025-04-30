@@ -5,7 +5,6 @@ data
 __pycache__
 result
 .direnv
-.DS_Store
 
 # Noise from dynamodb-local program in the working directory
 dynamodb-local-metadata.json
