@@ -8,7 +8,7 @@ import {
   MemKey,
   MemoryValueNotFoundError,
   type Store
-} from '../../src'
+} from 'brrr'
 
 const textDecoder = new TextDecoder()
 

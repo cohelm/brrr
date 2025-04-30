@@ -12,7 +12,11 @@
     "strict": true,
     "allowJs": true,
     "verbatimModuleSyntax": true,
-    "outDir": "dist"
+    "outDir": "dist",
+    "declaration": true,
+    "declarationMap": true,
+    "sourceMap": true,
+    "inlineSources": true
   },
   "exclude": ["node_modules"],
   "include": ["src/**/*.ts"]

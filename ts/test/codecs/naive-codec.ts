@@ -1,12 +1,6 @@
 import { deepStrictEqual, ok, strictEqual } from 'node:assert'
 import { suite, test } from 'node:test'
-import {
-  Brrr,
-  InMemoryStore,
-  Memory,
-  type NaiveCall,
-  NaiveCodec
-} from '../../src'
+import { Brrr, InMemoryStore, Memory, type NaiveCall, NaiveCodec } from 'brrr'
 import { ClosableInMemQueue } from '../fixtures/closable-mem-queue'
 
 await suite(import.meta.filename, async () => {

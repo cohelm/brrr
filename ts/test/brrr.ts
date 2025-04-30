@@ -1,6 +1,6 @@
 import { deepStrictEqual, rejects } from 'node:assert'
 import { suite, test } from 'node:test'
-import { Brrr, InMemoryStore, Memory, NaiveCodec } from '../src'
+import { Brrr, InMemoryStore, Memory, NaiveCodec } from 'brrr'
 import { ClosableInMemQueue } from './fixtures/closable-mem-queue'
 
 await suite(import.meta.filename, async () => {

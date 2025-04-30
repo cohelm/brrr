@@ -1,12 +1,7 @@
 import { equal, ok, rejects } from 'node:assert'
 import { suite, test } from 'node:test'
+import { InMemoryQueue, type Queue, QueueIsEmptyError, RedisQueue } from 'brrr'
 import { createClient } from 'redis'
-import {
-  InMemoryQueue,
-  type Queue,
-  QueueIsEmptyError,
-  RedisQueue
-} from '../../src'
 
 const cases: {
   readonly name: string
