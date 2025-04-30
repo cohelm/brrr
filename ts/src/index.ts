@@ -11,6 +11,7 @@ export * from './adapters/in-memory-queue'
 export * from './adapters/redis-queue'
 
 export * from './libs/error'
+export * from './libs/types'
 
 export * from './models/cache'
 export * from './models/call'
