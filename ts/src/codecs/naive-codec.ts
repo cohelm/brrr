@@ -1,6 +1,6 @@
+import type { Fn } from '../libs/types'
 import { Call } from '../models/call'
 import type { Codec } from '../models/codec'
-import type { Task } from '../models/task'
 
 export class NaiveCall extends Call {
   public readonly taskName: string
@@ -27,12 +27,13 @@ export class NaiveCodec implements Codec {
 
   public async invokeTask<A extends unknown[], R>(
     memoKey: string,
-    task: Task<A, R>,
+    taskName: string,
+    taskFn: Fn<A, R>,
     payload: Uint8Array
   ): Promise<Uint8Array> {
     const json = new TextDecoder().decode(payload)
     const args = JSON.parse(json) as A
-    const result = await task.fn(...args)
+    const result = await taskFn(...args)
     const resultJson = JSON.stringify(result)
     return new TextEncoder().encode(resultJson)
   }
