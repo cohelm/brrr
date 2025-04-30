@@ -1,3 +1,3 @@
 export interface Cache {
-  incr(key: string): Promise<number>
+  incr(key: string): Promise<number>;
 }

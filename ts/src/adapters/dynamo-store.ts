@@ -2,28 +2,28 @@ import {
   CreateTableCommand,
   DeleteTableCommand,
   type DynamoDBClient
-} from '@aws-sdk/client-dynamodb'
+} from '@aws-sdk/client-dynamodb';
 import {
   DeleteCommand,
   DynamoDBDocumentClient,
   GetCommand,
   PutCommand,
   UpdateCommand
-} from '@aws-sdk/lib-dynamodb'
-import { CompareMismatchError, MemoryValueNotFoundError } from '../libs/error'
-import type { MemKey } from '../models/memory'
+} from '@aws-sdk/lib-dynamodb';
+import { CompareMismatchError, MemoryValueNotFoundError } from '../libs/error';
+import type { MemKey } from '../models/memory';
 
 export class DynamoStore {
-  private client: DynamoDBDocumentClient
-  private readonly tableName: string
+  private client: DynamoDBDocumentClient;
+  private readonly tableName: string;
 
   constructor(dynamoDbClient: DynamoDBClient, tableName: string) {
-    this.client = DynamoDBDocumentClient.from(dynamoDbClient)
-    this.tableName = tableName
+    this.client = DynamoDBDocumentClient.from(dynamoDbClient);
+    this.tableName = tableName;
   }
 
   private key(memKey: MemKey): { pk: string; sk: string } {
-    return { pk: memKey.id, sk: memKey.type }
+    return { pk: memKey.id, sk: memKey.type };
   }
 
   async has(memKey: MemKey): Promise<boolean> {
@@ -33,8 +33,8 @@ export class DynamoStore {
         Key: this.key(memKey),
         ProjectionExpression: 'pk'
       })
-    )
-    return Boolean(response.Item)
+    );
+    return Boolean(response.Item);
   }
 
   async get(memKey: MemKey): Promise<Uint8Array> {
@@ -43,17 +43,17 @@ export class DynamoStore {
         TableName: this.tableName,
         Key: this.key(memKey)
       })
-    )
+    );
 
     if (!response.Item || !response.Item.value) {
-      throw new MemoryValueNotFoundError(memKey.toString())
+      throw new MemoryValueNotFoundError(memKey.toString());
     }
 
-    const value = response.Item.value
+    const value = response.Item.value;
     if (!(value instanceof Uint8Array)) {
-      throw new Error('Stored value is not a binary blob')
+      throw new Error('Stored value is not a binary blob');
     }
-    return value
+    return value;
   }
 
   async set(memKey: MemKey, value: Uint8Array): Promise<void> {
@@ -65,7 +65,7 @@ export class DynamoStore {
           value
         }
       })
-    )
+    );
   }
 
   async delete(memKey: MemKey): Promise<void> {
@@ -74,7 +74,7 @@ export class DynamoStore {
         TableName: this.tableName,
         Key: this.key(memKey)
       })
-    )
+    );
   }
 
   async setNewValue(memKey: MemKey, value: Uint8Array): Promise<void> {
@@ -88,15 +88,15 @@ export class DynamoStore {
           ExpressionAttributeNames: { '#value': 'value' },
           ExpressionAttributeValues: { ':value': value }
         })
-      )
+      );
     } catch (err: unknown) {
       if (
         err instanceof Error &&
         err.name === 'ConditionalCheckFailedException'
       ) {
-        throw new CompareMismatchError(memKey)
+        throw new CompareMismatchError(memKey);
       }
-      throw err
+      throw err;
     }
   }
 
@@ -106,7 +106,7 @@ export class DynamoStore {
     expected: Uint8Array | null
   ): Promise<void> {
     if (expected === null) {
-      throw new Error('dynamo cannot CAS a missing value')
+      throw new Error('dynamo cannot CAS a missing value');
     }
 
     try {
@@ -122,15 +122,15 @@ export class DynamoStore {
             ':expected': expected
           }
         })
-      )
+      );
     } catch (err: unknown) {
       if (
         err instanceof Error &&
         err.name === 'ConditionalCheckFailedException'
       ) {
-        throw new CompareMismatchError(memKey)
+        throw new CompareMismatchError(memKey);
       }
-      throw err
+      throw err;
     }
   }
 
@@ -139,7 +139,7 @@ export class DynamoStore {
     expected: Uint8Array | null
   ): Promise<void> {
     if (expected === null) {
-      throw new Error('dynamo cannot CAS delete a missing value')
+      throw new Error('dynamo cannot CAS delete a missing value');
     }
     try {
       await this.client.send(
@@ -151,15 +151,15 @@ export class DynamoStore {
           ExpressionAttributeNames: { '#value': 'value' },
           ExpressionAttributeValues: { ':expected': expected }
         })
-      )
+      );
     } catch (err: unknown) {
       if (
         err instanceof Error &&
         err.name === 'ConditionalCheckFailedException'
       ) {
-        throw new CompareMismatchError(memKey)
+        throw new CompareMismatchError(memKey);
       }
-      throw err
+      throw err;
     }
   }
 
@@ -180,7 +180,7 @@ export class DynamoStore {
           WriteCapacityUnits: 5
         }
       })
-    )
+    );
   }
 
   async deleteTable(): Promise<void> {
@@ -188,6 +188,6 @@ export class DynamoStore {
       new DeleteTableCommand({
         TableName: this.tableName
       })
-    )
+    );
   }
 }

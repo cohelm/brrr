@@ -29,7 +29,6 @@
   "javascript": {
     "formatter": {
       "quoteStyle": "single",
-      "semicolons": "asNeeded",
       "arrowParentheses": "asNeeded",
       "trailingCommas": "none"
     }
