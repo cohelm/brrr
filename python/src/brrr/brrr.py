@@ -5,7 +5,7 @@ import base64
 from collections.abc import Awaitable, Callable, Sequence
 import functools
 import logging
-from typing import Any
+from typing import Any, Concatenate
 from uuid import uuid4
 
 from .call import Call
@@ -19,10 +19,6 @@ from .store import (
 from .queue import Queue, QueueIsClosed, QueueIsEmpty
 
 logger = logging.getLogger(__name__)
-
-# I’d like for the typechecker to raise an error when a value with this type is
-# called as a function without await.  How?
-AsyncFunc = Callable[..., Awaitable[Any]]
 
 
 class SpawnLimitError(Exception):
@@ -47,8 +43,11 @@ class Brrr:
     """
 
     @staticmethod
-    def requires_setup(method):
-        def wrapper(self, *args, **kwargs):
+    def requires_setup[**P, R](
+        method: Callable[Concatenate[Brrr, P], R],
+    ) -> Callable[Concatenate[Brrr, P], R]:
+        @functools.wraps(method)
+        def wrapper(self: Brrr, *args: P.args, **kwargs: P.kwargs) -> R:
             if self.queue is None or self.memory is None or self.cache is None:
                 raise Exception("Brrr not set up")
             return method(self, *args, **kwargs)
@@ -215,21 +214,25 @@ class Brrr:
         return self._codec.decode_return(encoded_val)
 
     @requires_setup
-    async def _call_task(self, task_name: str, memo_key: str, payload: bytes) -> Any:
+    async def _call_task(self, task_name: str, memo_key: str, payload: bytes) -> bytes:
         """
         Evaluate a frame, which means calling the tasks function with its arguments
         """
         task = self.tasks[task_name]
         return await self._codec.invoke_task(memo_key, task.name, task.fn, payload)
 
-    def register_task(self, fn: AsyncFunc, name: str | None = None) -> Task:
+    def register_task[**P, R](
+        self, fn: Callable[P, Awaitable[R]], name: str | None = None
+    ) -> Task[P, R]:
         task = Task(self, fn, name)
         if task.name in self.tasks:
             raise Exception(f"Task {task.name} already exists")
         self.tasks[task.name] = task
         return task
 
-    def task(self, fn: AsyncFunc, name: str | None = None) -> Task:
+    def task[**P, R](
+        self, fn: Callable[P, Awaitable[R]], name: str | None = None
+    ) -> Task[P, R]:
         return Task(self, fn, name)
 
     async def wrrrk(self):
@@ -239,7 +242,7 @@ class Brrr:
         await Wrrrker(self).loop()
 
 
-class Task:
+class Task[**P, R]:
     """
     A decorator to turn a function into a task.
     When it is called, within the context of a worker, it checks whether it has already been computed.
@@ -248,18 +251,19 @@ class Task:
     A task can not write to the store, only read from it
     """
 
-    fn: AsyncFunc
-    name: str
-    brrr: Brrr
-
-    def __init__(self, brrr: Brrr, fn: AsyncFunc, name: str | None = None):
+    def __init__(
+        self,
+        brrr: Brrr,
+        fn: Callable[P, Awaitable[R]],
+        name: str | None = None,
+    ):
         self.brrr = brrr
         self.fn = fn
         self.name = name or fn.__name__
 
     # Calling a function returns the value if it has already been computed.
     # Otherwise, it raises a Call exception to schedule the computation
-    async def __call__(self, *args, **kwargs):
+    async def __call__(self, *args: P.args, **kwargs: P.kwargs) -> R:
         if not self.brrr.are_we_inside_worker_context():
             return await self.evaluate(args, kwargs)
         call = self.brrr.memory.make_call(self.name, args, kwargs)
