@@ -67,13 +67,42 @@ export class Brrr {
     return this.scheduleRootCall(call);
   }
 
+  public async upschedule<A extends unknown[]>(
+    task: Task<A, unknown>,
+    args: A
+  ): Promise<void>;
+  public async upschedule(taskName: string, args: unknown[]): Promise<void>;
+  public async upschedule<A extends unknown[]>(
+    ...args: [string | Task<A, unknown>, A]
+  ): Promise<void> {
+    this.requiresSetup();
+    const call = this.memory.makeCall(
+      typeof args[0] === 'string' ? args[0] : args[0].name,
+      args[1]
+    );
+    if (await this.memory.hasCall(call)) {
+      return this.rescheduleRootCall(call);
+    }
+    return this.scheduleRootCall(call);
+  }
+
+
   private async scheduleRootCall(call: Call): Promise<void> {
     this.requiresSetup();
     await this.memory.setCall(call);
+    await this.putRootJob(call.memoKey)
+  }
+
+  private async rescheduleRootCall(call: Call): Promise<void> {
+    this.requiresSetup();
+    await this.putRootJob(call.memoKey);
+  }
+
+  private async putRootJob(memoKey: string): Promise<void> {
     const rootId = Buffer.from(randomUUID().replaceAll('-', ''), 'hex')
       .toString('base64url')
       .replaceAll('=', '');
-    await this.putJob(call.memoKey, rootId);
+    await this.putJob(memoKey, rootId);
   }
 
   public async scheduleCallNested(
@@ -117,6 +146,11 @@ export class Brrr {
     const call = this.memory.makeCall(taskName, args);
     const encoded = await this.memory.getValue(call);
     return this.memory.codec.decodeReturn(encoded);
+  }
+
+  public async isDone(memoKey: string): Promise<boolean> {
+    this.requiresSetup();
+    return this.memory.hasMemoKey(memoKey)
   }
 
   public task<A extends unknown[], R>(fn: Fn<A, R>): Task<A, R>;

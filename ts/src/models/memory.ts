@@ -59,6 +59,11 @@ export class Memory {
     return this.store.has(memKey);
   }
 
+  public async hasMemoKey(memoKey: string): Promise<boolean> {
+    const memKey = new MemKey('value', memoKey);
+    return this.store.has(memKey);
+  }
+
   public async getValue(call: Call): Promise<Uint8Array> {
     const memKey = new MemKey('value', call.memoKey);
     const value = await this.store.get(memKey);
