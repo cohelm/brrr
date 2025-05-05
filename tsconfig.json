@@ -1,0 +1,19 @@
+{
+  "compilerOptions": {
+    "target": "es2022",
+    "module": "preserve",
+    "moduleDetection": "force",
+    "moduleResolution": "bundler",
+    "lib": ["dom", "esnext"],
+    "esModuleInterop": true,
+    "isolatedModules": true,
+    "resolveJsonModule": true,
+    "skipLibCheck": true,
+    "strict": true,
+    "allowJs": true,
+    "verbatimModuleSyntax": true,
+    "outDir": "dist"
+  },
+  "exclude": ["node_modules"],
+  "include": ["**/*.ts"]
+}
