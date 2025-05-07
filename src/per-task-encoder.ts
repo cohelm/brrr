@@ -1,4 +1,4 @@
-import { Brrr } from 'brrr'
+import { Brrr } from './brrr'
 
 abstract class AbstractTask<A extends unknown[], R> {
   abstract readonly name: string
@@ -46,3 +46,5 @@ const brrr = new Brrr({
   queue: new Queue(),
   tasks: [new FibTask()]
 })
+
+brrr.task('sample_fib').invoke(10)
