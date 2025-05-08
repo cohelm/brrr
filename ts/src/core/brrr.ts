@@ -122,7 +122,7 @@ export class Brrr {
     if ((await this.cache.incr(`brrr_count/${rootId}`)) > this.SPAWN_LIMIT) {
       throw new SpawnLimitError(this.SPAWN_LIMIT, rootId, memoKey);
     }
-    this.queue.putMessage(`${rootId}/${memoKey}`);
+    await this.queue.putMessage(`${rootId}/${memoKey}`);
   }
 
   public async callTask(
